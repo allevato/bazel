@@ -27,6 +27,15 @@ message DebugRequest {
   // same sequence number so that the client can synchronize its activity if
   // desired.
   int64 sequence_number = 1;
+
+  // The payload describes the type of the request and its arguments, if any.
+  oneof payload {
+    ListThreadsRequest listThreads = 100;
+  }
+}
+
+// A request to list the threads that are currently active running Skylark code.
+message ListThreadsRequest {
 }
 
 // There are two kinds of events: "responses", which correspond to a
@@ -38,4 +47,24 @@ message DebugEvent {
   // If non-zero, this event is a response to a DebugRequest with the same
   // sequence number.
   int64 sequence_number = 1;
+
+  // The payload describes the type of event and any additional information
+  // about the event.
+  oneof payload {
+    ListThreadsResponse listThreads = 100;
+  }
+}
+
+// The response to a ListThreadsRequest.
+message ListThreadsResponse {
+
+  // The threads that are currently active running Skylark code.
+  repeated Thread thread = 1;
+}
+
+// Information about a thread that is running Skylark code.
+message Thread {
+
+  // The identifier of the thread.
+  int64 id = 1;
 }

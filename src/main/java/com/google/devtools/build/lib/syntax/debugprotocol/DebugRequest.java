@@ -25,4 +25,11 @@ public class DebugRequest {
   public DebugProtos.DebugRequest asRequestProto() {
     return requestProto;
   }
+
+  public static DebugRequest listThreadsRequest(long sequenceNumber) {
+    return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setListThreads(DebugProtos.ListThreadsRequest.getDefaultInstance())
+        .build());
+  }
 }

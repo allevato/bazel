@@ -14,6 +14,8 @@
 
 package com.google.devtools.build.lib.syntax.debugprotocol;
 
+import java.util.List;
+
 /** Represents an event or response sent from the debug server to a debugger client. */
 public class DebugEvent {
   private DebugProtos.DebugEvent eventProto;
@@ -24,5 +26,14 @@ public class DebugEvent {
 
   public DebugProtos.DebugEvent asEventProto() {
     return eventProto;
+  }
+
+  public static DebugEvent listThreadsResponse(
+      long sequenceNumber, List<DebugProtos.Thread> threads) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setListThreads(DebugProtos.ListThreadsResponse.newBuilder()
+            .addAllThread(threads))
+        .build());
   }
 }
