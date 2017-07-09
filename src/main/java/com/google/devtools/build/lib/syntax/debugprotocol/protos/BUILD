@@ -12,12 +12,6 @@ java_library_srcs(
     deps = [":debug_protocol_java_proto"],
 )
 
-java_library(
-    name = "debugprotocol",
-    srcs = glob(["*.java"]),
-    deps = [":debug_protocol_java_proto"],
-)
-
 java_proto_library(
     name = "debug_protocol_java_proto",
     deps = ["debug_protocol_proto"],
