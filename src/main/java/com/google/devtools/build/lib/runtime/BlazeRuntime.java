@@ -55,6 +55,7 @@ import com.google.devtools.build.lib.server.signal.InterruptSignalHandler;
 import com.google.devtools.build.lib.shell.JavaSubprocessFactory;
 import com.google.devtools.build.lib.shell.Subprocess;
 import com.google.devtools.build.lib.shell.SubprocessBuilder;
+import com.google.devtools.build.lib.syntax.debugserver.SkylarkDebugServer;
 import com.google.devtools.build.lib.unix.UnixFileSystem;
 import com.google.devtools.build.lib.util.AbruptExitException;
 import com.google.devtools.build.lib.util.BlazeClock;
@@ -838,11 +839,19 @@ public final class BlazeRuntime {
           runtime.getWorkspace().getWorkspace(),
           runtime.getServerDirectory(),
           startupOptions.maxIdleSeconds);
+      openSkylarkDebugServer(startupOptions);
       return rpcServer[0];
     } catch (ReflectiveOperationException | IllegalArgumentException e) {
       throw new AbruptExitException("gRPC server not compiled in", ExitCode.BLAZE_INTERNAL_ERROR);
     }
 
+  }
+
+  /** Starts the Skylark debug server on the port specified in the startup options. */
+  private static void openSkylarkDebugServer(BlazeServerStartupOptions startupOptions)
+      throws IOException {
+    SkylarkDebugServer debugServer = SkylarkDebugServer.getInstance();
+    debugServer.open(startupOptions.debugServerPort);
   }
 
   /**
