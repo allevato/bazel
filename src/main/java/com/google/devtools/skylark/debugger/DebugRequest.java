@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.devtools.build.lib.syntax.debugprotocol;
+package com.google.devtools.skylark.debugger;
 
-/** Represents a request sent from a debugger client to the debug server. */
+import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
+
+/**
+ * Represents a request sent from a debugger client to the debug server.
+ */
 public class DebugRequest {
-  private DebugProtos.DebugRequest requestProto;
+  private DebugProtos.DebugRequest.Builder requestProtoBuilder;
 
-  private DebugRequest(DebugProtos.DebugRequest requestProto) {
-    this.requestProto = requestProto;
+  private DebugRequest(DebugProtos.DebugRequest.Builder requestProtoBuilder) {
+    this.requestProtoBuilder = requestProtoBuilder;
   }
 
-  public DebugProtos.DebugRequest asRequestProto() {
-    return requestProto;
+  public DebugProtos.DebugRequest asRequestProto(long sequenceNumber) {
+    return requestProtoBuilder.setSequenceNumber(sequenceNumber).build();
   }
 
-  public static DebugRequest listThreadsRequest(long sequenceNumber) {
+  public static DebugRequest listThreadsRequest() {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
-        .setSequenceNumber(sequenceNumber)
-        .setListThreads(DebugProtos.ListThreadsRequest.getDefaultInstance())
-        .build());
+        .setListThreads(DebugProtos.ListThreadsRequest.getDefaultInstance()));
   }
 }

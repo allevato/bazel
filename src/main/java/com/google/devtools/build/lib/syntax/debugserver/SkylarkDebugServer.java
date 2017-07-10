@@ -17,7 +17,6 @@ package com.google.devtools.build.lib.syntax.debugserver;
 import com.google.common.collect.ImmutableList;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugEvent;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
-import com.google.devtools.build.lib.syntax.debugprotocol.DebugRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

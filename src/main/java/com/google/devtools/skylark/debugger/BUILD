@@ -1,31 +1,17 @@
-# The Skylark interpreter
+# The basic terminal-based Skylark debugger
 # Open-sourced as part of Bazel.
 
 package(default_visibility = ["//src:__subpackages__"])
 
 java_binary(
-    name = "Skylark",
-    srcs = ["Skylark.java"],
-    main_class = "com.google.devtools.skylark.Skylark",
-    deps = [
-        "//src/main/java/com/google/devtools/build/lib:events",
-        "//src/main/java/com/google/devtools/build/lib:packages-internal",
-    ],
-)
-
-java_binary(
-    name = "BasicDebugger",
-    srcs = [
-        "debugger/BasicDebugger.java",
-        "debugger/BasicDebuggerContext.java",
-        "debugger/BasicDebuggerFunctions.java",
-        "debugger/BasicDebuggerOptions.java",
-    ],
-    main_class = "com.google.devtools.skylark.BasicDebugger",
+    name = "debugger",
+    srcs = glob(["*.java"]),
+    main_class = "com.google.devtools.skylark.debugger.BasicDebugger",
     deps = [
         "//src/main/java/com/google/devtools/build/lib:events",
         "//src/main/java/com/google/devtools/build/lib:packages-internal",
         "//src/main/java/com/google/devtools/build/lib:skylarkinterface",
+        "//src/main/java/com/google/devtools/build/lib/syntax/debugprotocol/protos:debug_protocol_java_proto",
         "//src/main/java/com/google/devtools/common/options",
         "//src/main/protobuf:option_filters_java_proto",
         "//third_party:guava",
