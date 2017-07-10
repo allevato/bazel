@@ -76,6 +76,7 @@ StartupOptions::StartupOptions(const string &product_name,
       deep_execroot(true),
       block_for_lock(true),
       host_jvm_debug(false),
+      debug_server_port(8421),
       batch(false),
       batch_cpu_scheduling(false),
       io_nice_level(-1),
@@ -132,6 +133,7 @@ StartupOptions::StartupOptions(const string &product_name,
   RegisterUnaryStartupFlag("blazerc");
   RegisterUnaryStartupFlag("command_port");
   RegisterUnaryStartupFlag("connect_timeout_secs");
+  RegisterUnaryStartupFlag("debug_server_port");
   RegisterUnaryStartupFlag("experimental_oom_more_eagerly_threshold");
   RegisterUnaryStartupFlag("host_javabase");
   RegisterUnaryStartupFlag("host_jvm_args");
@@ -355,6 +357,17 @@ blaze_exit_code::ExitCode StartupOptions::ProcessArg(
           "multiple times.";
       return blaze_exit_code::BAD_ARGV;
     }
+  } else if ((value = GetUnaryOption(
+      arg, next_arg, "--debug_server_port")) != NULL) {
+    if (!blaze_util::safe_strto32(value, &debug_server_port) ||
+        debug_server_port < 0 || debug_server_port > 65535) {
+      blaze_util::StringPrintf(error,
+          "Invalid argument to --debug_server_port: '%s'.\n"
+          "Must be a valid port number or 0.\n",
+          value);
+      return blaze_exit_code::BAD_ARGV;
+    }
+    option_sources["debug_server_port"] = rcfile;
   } else {
     bool extra_argument_processed;
     blaze_exit_code::ExitCode process_extra_arg_exit_code = ProcessArgExtra(

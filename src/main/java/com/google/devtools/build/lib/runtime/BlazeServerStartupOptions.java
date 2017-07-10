@@ -193,6 +193,16 @@ public class BlazeServerStartupOptions extends OptionsBase {
   public boolean batch;
 
   @Option(
+      name = "debug_server_port",
+      defaultValue = "8421", // NOTE: purely decorative!  See class docstring.
+      category = "server startup",
+      documentationCategory = OptionDocumentationCategory.BAZEL_CLIENT_OPTIONS,
+      effectTags = {OptionEffectTag.LOSES_INCREMENTAL_STATE, OptionEffectTag.EXECUTION},
+      help = "The port on which the Skylark debug server will listen for connections."
+  )
+  public int debugServerPort;
+
+  @Option(
     name = "deep_execroot",
     defaultValue = "true", // NOTE: purely decorative!  See class docstring.
     category = "server startup",
