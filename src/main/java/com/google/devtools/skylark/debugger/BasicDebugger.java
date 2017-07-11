@@ -20,11 +20,15 @@ import com.google.devtools.build.lib.events.EventKind;
 import com.google.devtools.build.lib.syntax.BuildFileAST;
 import com.google.devtools.build.lib.syntax.Environment;
 import com.google.devtools.build.lib.syntax.Mutability;
+import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import com.google.devtools.common.options.OptionsParser;
 import com.google.protobuf.TextFormat;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 /** A basic terminal-based debugger for Skylark code. */
@@ -57,6 +61,12 @@ class BasicDebugger {
 
   private BasicDebuggerOptions options;
 
+  private Socket socket;
+
+  private InputStream eventStream;
+
+  private OutputStream requestStream;
+
   private BasicDebugger(BasicDebuggerOptions options) {
     this.options = options;
   }
@@ -71,6 +81,16 @@ class BasicDebugger {
     }
   }
 
+  public void open() throws IOException {
+    socket = new Socket(options.host, options.port);
+    eventStream = socket.getInputStream();
+    requestStream = socket.getOutputStream();
+  }
+
+  public void close() throws IOException {
+    socket.close();
+  }
+
   /** Provide a REPL for accessing debugger commands. */
   public void commandLoop() {
     long sequenceNumber = 1;
@@ -79,7 +99,12 @@ class BasicDebugger {
     while ((input = prompt()) != null) {
       try {
         DebugRequest request = (DebugRequest) BuildFileAST.eval(env, input);
-        TextFormat.print(request.asRequestProto(sequenceNumber++), System.out);
+        DebugProtos.DebugRequest requestProto = request.asRequestProto(sequenceNumber++);
+        requestProto.writeDelimitedTo(requestStream);
+        TextFormat.print(requestProto, System.out);
+
+        DebugProtos.DebugEvent eventProto = DebugProtos.DebugEvent.parseDelimitedFrom(eventStream);
+        TextFormat.print(eventProto, System.out);
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -92,7 +117,10 @@ class BasicDebugger {
       parser.parse(args);
       BasicDebuggerOptions options = parser.getOptions(BasicDebuggerOptions.class);
 
-      new BasicDebugger(options).commandLoop();
+      BasicDebugger debugger = new BasicDebugger(options);
+      debugger.open();
+      debugger.commandLoop();
+      debugger.close();
     } catch (Exception e) {
       e.printStackTrace();
     }
