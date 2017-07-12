@@ -194,7 +194,7 @@ public class BlazeServerStartupOptions extends OptionsBase {
 
   @Option(
       name = "debug_server_port",
-      defaultValue = "8421", // NOTE: purely decorative!  See class docstring.
+      defaultValue = "7300", // NOTE: purely decorative!  See class docstring.
       category = "server startup",
       documentationCategory = OptionDocumentationCategory.BAZEL_CLIENT_OPTIONS,
       effectTags = {OptionEffectTag.LOSES_INCREMENTAL_STATE, OptionEffectTag.EXECUTION},

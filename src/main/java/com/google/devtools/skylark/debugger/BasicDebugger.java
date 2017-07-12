@@ -30,6 +30,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Semaphore;
 
 /** A basic terminal-based debugger for Skylark code. */
 class BasicDebugger {
@@ -67,8 +68,11 @@ class BasicDebugger {
 
   private OutputStream requestStream;
 
+  private Semaphore responseLatch;
+
   private BasicDebugger(BasicDebuggerOptions options) {
     this.options = options;
+    this.responseLatch = new Semaphore(0);
   }
 
   private String prompt() {
@@ -81,14 +85,39 @@ class BasicDebugger {
     }
   }
 
-  public void open() throws IOException {
+  private void open() throws IOException {
     socket = new Socket(options.host, options.port);
     eventStream = socket.getInputStream();
     requestStream = socket.getOutputStream();
+
+    Thread thread = new Thread(() -> {
+      try {
+        listenForEvents();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
+    thread.setDaemon(true);
+    thread.start();
   }
 
-  public void close() throws IOException {
+  private void close() throws IOException {
     socket.close();
+  }
+
+  /** Listens for events from the server and processes them as they come in. */
+  private void listenForEvents() throws IOException {
+    boolean running = true;
+    while (running) {
+      DebugProtos.DebugEvent eventProto = DebugProtos.DebugEvent.parseDelimitedFrom(eventStream);
+      TextFormat.print(eventProto, System.out);
+
+      // TODO(allevato): Handle an exit message.
+
+      if (eventProto.getSequenceNumber() != 0) {
+        responseLatch.release();
+      }
+    }
   }
 
   /** Provide a REPL for accessing debugger commands. */
@@ -101,10 +130,10 @@ class BasicDebugger {
         DebugRequest request = (DebugRequest) BuildFileAST.eval(env, input);
         DebugProtos.DebugRequest requestProto = request.asRequestProto(sequenceNumber++);
         requestProto.writeDelimitedTo(requestStream);
+        requestStream.flush();
         TextFormat.print(requestProto, System.out);
 
-        DebugProtos.DebugEvent eventProto = DebugProtos.DebugEvent.parseDelimitedFrom(eventStream);
-        TextFormat.print(eventProto, System.out);
+        responseLatch.acquireUninterruptibly();
       } catch (Exception e) {
         e.printStackTrace();
       }

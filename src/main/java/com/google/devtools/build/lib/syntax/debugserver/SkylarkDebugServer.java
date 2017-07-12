@@ -120,6 +120,7 @@ public class SkylarkDebugServer {
 
     if (response != null) {
       response.asEventProto().writeDelimitedTo(eventStream);
+      eventStream.flush();
     }
 
     return keepRunning;

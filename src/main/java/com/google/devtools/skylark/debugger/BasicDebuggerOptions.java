@@ -35,7 +35,7 @@ public class BasicDebuggerOptions extends OptionsBase {
 
   @Option(
       name = "port",
-      defaultValue = "8421",
+      defaultValue = "7300",
       category = "connection",
       documentationCategory = UNCATEGORIZED,
       effectTags = NO_OP,
