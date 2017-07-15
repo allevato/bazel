@@ -110,7 +110,16 @@ class BasicDebugger {
     boolean running = true;
     while (running) {
       DebugProtos.DebugEvent eventProto = DebugProtos.DebugEvent.parseDelimitedFrom(eventStream);
-      TextFormat.print(eventProto, System.out);
+
+      switch (eventProto.getPayloadCase()) {
+        case LISTTHREADS:
+          handleListThreadsResponse(eventProto.getListThreads());
+          break;
+        default:
+          System.out.println("Unknown event received from server:");
+          TextFormat.print(eventProto, System.out);
+          break;
+      }
 
       // TODO(allevato): Handle an exit message.
 
@@ -118,6 +127,12 @@ class BasicDebugger {
         responseLatch.release();
       }
     }
+  }
+
+  private void handleListThreadsResponse(DebugProtos.ListThreadsResponse listThreads)
+      throws IOException{
+    System.out.println("\nCurrent threads:");
+    TextFormat.print(listThreads, System.out);
   }
 
   /** Provide a REPL for accessing debugger commands. */
@@ -131,7 +146,6 @@ class BasicDebugger {
         DebugProtos.DebugRequest requestProto = request.asRequestProto(sequenceNumber++);
         requestProto.writeDelimitedTo(requestStream);
         requestStream.flush();
-        TextFormat.print(requestProto, System.out);
 
         responseLatch.acquireUninterruptibly();
       } catch (Exception e) {
