@@ -88,23 +88,37 @@ public class SkylarkDebugServer {
       // doesn't gracefully shut down the connection.
       final Socket clientSocket = serverSocket.accept();
 
-      requestStream = clientSocket.getInputStream();
-      eventStream = clientSocket.getOutputStream();
+      Thread clientThread = new Thread(() -> {
+        try {
+          requestStream = clientSocket.getInputStream();
+          eventStream = clientSocket.getOutputStream();
 
-      boolean running = true;
-      while (running) {
-        running = handleClientRequest();
-      }
+          boolean running = true;
+          while (running) {
+            running = handleClientRequest();
+          }
 
-      clientSocket.close();
+          clientSocket.close();
+        }
+        catch (IOException e) {
+          System.err.println("Client thread died because of an I/O error: " + e.getMessage());
+          e.printStackTrace();
+        }
+      });
+      clientThread.setDaemon(true);
+      clientThread.start();
     }
   }
 
   /** Reads a request from the client, handles it, and writes the response back out. */
   private boolean handleClientRequest() throws IOException {
     DebugProtos.DebugRequest request = DebugProtos.DebugRequest.parseDelimitedFrom(requestStream);
-    long sequenceNumber = request.getSequenceNumber();
+    if (request == null) {
+      // This can happen if the client drops the connection, so terminate the thread.
+      return false;
+    }
 
+    long sequenceNumber = request.getSequenceNumber();
     DebugEvent response = null;
     boolean keepRunning = true;
 
