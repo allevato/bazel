@@ -15,6 +15,8 @@
 package com.google.devtools.build.lib.syntax.debugserver;
 
 import com.google.common.collect.ImmutableList;
+import com.google.devtools.build.lib.syntax.Environment;
+import com.google.devtools.build.lib.syntax.EvalException;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugEvent;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import java.io.IOException;
@@ -22,6 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Manages the network socket and debugging state for threads running Skylark code. */
 public class SkylarkDebugServer {
@@ -43,6 +46,13 @@ public class SkylarkDebugServer {
 
   /** The output stream used to write events to the currently connected client. */
   private OutputStream eventStream;
+
+  /** Tracks the currently active threads. */
+  private ConcurrentHashMap<Long, Object> requestHandlers;
+
+  public SkylarkDebugServer() {
+    requestHandlers = new ConcurrentHashMap<>();
+  }
 
   /**
    * Opens the debug server socket and spawns a thread that listens for an incoming connection.
@@ -73,6 +83,48 @@ public class SkylarkDebugServer {
    */
   public void close() throws IOException {
     serverSocket.close();
+  }
+
+  /**
+   * Tracks the execution of the given callable object in the debug server.
+   *
+   * @param env the Skylark execution environment
+   * @param callable the callable object whose execution will be tracked
+   * @param <T> the result type of the callable
+   * @return the value returned by the callable
+   * @throws EvalException if the callable throws an exception
+   */
+  public <T> T runWithDebugging(Environment env, SkylarkDebugCallable<T> callable)
+      throws EvalException, InterruptedException {
+    long threadId = Thread.currentThread().getId();
+    // TODO(allevato): Associate a debug adapter with the environment and put that here.
+    requestHandlers.put(threadId, new Object());
+    postEvent(DebugEvent.threadStartedEvent(
+        DebugProtos.Thread.newBuilder().setId(threadId).build()));
+
+    T result = callable.call();
+
+    postEvent(DebugEvent.threadEndedEvent(
+        DebugProtos.Thread.newBuilder().setId(threadId).build()));
+    requestHandlers.remove(threadId);
+
+    return result;
+  }
+
+  /**
+   * Posts a debug event if a client is currently connected.
+   *
+   * @param event the event to post
+   */
+  private void postEvent(DebugEvent event) {
+    // TODO(allevato): Synchronize this.
+    if (eventStream != null) {
+      try {
+        event.asEventProto().writeDelimitedTo(eventStream);
+      } catch (IOException e) {
+        System.err.println("Failed to post event: " + e.getMessage());
+      }
+    }
   }
 
   /**

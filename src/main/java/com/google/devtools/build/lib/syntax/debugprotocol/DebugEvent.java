@@ -36,4 +36,18 @@ public class DebugEvent {
             .addAllThread(threads))
         .build());
   }
+
+  public static DebugEvent threadStartedEvent(DebugProtos.Thread thread) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setThreadStarted(DebugProtos.ThreadStartedEvent.newBuilder()
+            .setThread(thread))
+        .build());
+  }
+
+  public static DebugEvent threadEndedEvent(DebugProtos.Thread thread) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setThreadEnded(DebugProtos.ThreadEndedEvent.newBuilder()
+            .setThread(thread))
+        .build());
+  }
 }

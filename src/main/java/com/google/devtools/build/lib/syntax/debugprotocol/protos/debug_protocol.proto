@@ -52,6 +52,9 @@ message DebugEvent {
   // about the event.
   oneof payload {
     ListThreadsResponse listThreads = 100;
+
+    ThreadStartedEvent threadStarted = 1000;
+    ThreadEndedEvent threadEnded = 1001;
   }
 }
 
@@ -60,6 +63,20 @@ message ListThreadsResponse {
 
   // The threads that are currently active running Skylark code.
   repeated Thread thread = 1;
+}
+
+// An event indicating that a thread has begun executing Skylark code.
+message ThreadStartedEvent {
+
+  // The thread that began.
+  Thread thread = 1;
+}
+
+// An event indicating that a thread that was executed Skylark code has ended.
+message ThreadEndedEvent {
+
+  // The thread that ended.
+  Thread thread = 1;
 }
 
 // Information about a thread that is running Skylark code.
