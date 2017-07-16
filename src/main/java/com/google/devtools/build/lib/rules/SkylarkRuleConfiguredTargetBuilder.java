@@ -49,6 +49,7 @@ import com.google.devtools.build.lib.syntax.SkylarkNestedSet;
 import com.google.devtools.build.lib.syntax.SkylarkSemanticsOptions;
 import com.google.devtools.build.lib.syntax.SkylarkType;
 import com.google.devtools.build.lib.syntax.Type;
+import com.google.devtools.build.lib.syntax.debugserver.SkylarkDebugServer;
 import com.google.devtools.build.lib.util.FileType;
 import com.google.devtools.build.lib.util.FileTypeSet;
 import java.util.Collections;
@@ -73,6 +74,7 @@ public final class SkylarkRuleConfiguredTargetBuilder {
     SkylarkRuleContext skylarkRuleContext = null;
     try (Mutability mutability = Mutability.create("configured target")) {
       skylarkRuleContext = new SkylarkRuleContext(ruleContext, null, skylarkSemantics);
+      final SkylarkRuleContext finalRuleContext = skylarkRuleContext;
       Environment env = Environment.builder(mutability)
           .setCallerLabel(ruleContext.getLabel())
           .setGlobals(
@@ -81,11 +83,14 @@ public final class SkylarkRuleConfiguredTargetBuilder {
           .setEventHandler(ruleContext.getAnalysisEnvironment().getEventHandler())
           .build(); // NB: loading phase functions are not available: this is analysis already,
                     // so we do *not* setLoadingPhase().
-      Object target = ruleImplementation.call(
-          ImmutableList.<Object>of(skylarkRuleContext),
-          ImmutableMap.<String, Object>of(),
+
+      Object target = SkylarkDebugServer.getInstance().runWithDebugging(env, () -> {
+        return ruleImplementation.call(
+            ImmutableList.<Object>of(finalRuleContext),
+            ImmutableMap.<String, Object>of(),
           /*ast=*/null,
-          env);
+            env);
+      });
 
       if (ruleContext.hasErrors()) {
         return null;
