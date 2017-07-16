@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Semaphore;
 
@@ -93,6 +94,8 @@ class BasicDebugger {
     Thread thread = new Thread(() -> {
       try {
         listenForEvents();
+      } catch (SocketException e) {
+        // Ignore.
       } catch (IOException e) {
         e.printStackTrace();
       }
