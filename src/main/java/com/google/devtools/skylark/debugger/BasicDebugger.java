@@ -118,6 +118,12 @@ class BasicDebugger {
         case LISTTHREADS:
           handleListThreadsResponse(eventProto.getListThreads());
           break;
+        case THREADSTARTED:
+          handleThreadStartedEvent(eventProto.getThreadStarted());
+          break;
+        case THREADENDED:
+          handleThreadEndedEvent(eventProto.getThreadEnded());
+          break;
         default:
           System.out.println("Unknown event received from server:");
           TextFormat.print(eventProto, System.out);
@@ -136,6 +142,16 @@ class BasicDebugger {
       throws IOException{
     System.out.println("\nCurrent threads:");
     TextFormat.print(listThreads, System.out);
+  }
+
+  private void handleThreadStartedEvent(DebugProtos.ThreadStartedEvent threadStarted)
+      throws IOException{
+    System.out.printf("\n[Thread %d has started]\n", threadStarted.getThread().getId());
+  }
+
+  private void handleThreadEndedEvent(DebugProtos.ThreadEndedEvent threadEnded)
+      throws IOException{
+    System.out.printf("\n[Thread %d has ended]\n", threadEnded.getThread().getId());
   }
 
   /** Provide a REPL for accessing debugger commands. */
