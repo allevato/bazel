@@ -14,6 +14,8 @@
 
 package com.google.devtools.skylark.debugger;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 
 /**
@@ -33,5 +35,22 @@ public class DebugRequest {
   public static DebugRequest listThreadsRequest() {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
         .setListThreads(DebugProtos.ListThreadsRequest.getDefaultInstance()));
+  }
+
+  public static DebugRequest setBreakpointsRequest(Iterable<Breakpoint> breakpoints) {
+    Iterable<DebugProtos.Breakpoint> breakpointProtos = Iterables.transform(
+        breakpoints, (Breakpoint breakpoint) -> {
+          return breakpoint.asBreakpointProto();
+        });
+
+    return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
+        .setSetBreakpoints(DebugProtos.SetBreakpointsRequest.newBuilder()
+            .addAllBreakpoint(ImmutableList.copyOf(breakpointProtos))));
+  }
+
+  public static DebugRequest continueExecutionRequest(long threadId) {
+    return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
+        .setContinueExecution(DebugProtos.ContinueExecutionRequest.newBuilder()
+            .setThreadId(threadId)));
   }
 }

@@ -37,6 +37,20 @@ public class DebugEvent {
         .build());
   }
 
+  public static DebugEvent setBreakpointsResponse(long sequenceNumber) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setSetBreakpoints(DebugProtos.SetBreakpointsResponse.getDefaultInstance())
+        .build());
+  }
+
+  public static DebugEvent continueExecutionResponse(long sequenceNumber) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setContinueExecution(DebugProtos.ContinueExecutionResponse.getDefaultInstance())
+        .build());
+  }
+
   public static DebugEvent threadStartedEvent(DebugProtos.Thread thread) {
     return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
         .setThreadStarted(DebugProtos.ThreadStartedEvent.newBuilder()

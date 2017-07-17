@@ -14,6 +14,8 @@
 package com.google.devtools.build.lib.syntax;
 
 
+import com.google.devtools.build.lib.syntax.debugserver.SkylarkDebugServer;
+
 /**
  * Base class for all statements nodes in the AST.
  */
@@ -26,7 +28,8 @@ public abstract class Statement extends ASTNode {
    * @throws EvalException if execution of the statement could not be completed.
    * @throws InterruptedException may be thrown in a sub class.
    */
-  final void exec(Environment env) throws EvalException, InterruptedException   {
+  final void exec(Environment env) throws EvalException, InterruptedException {
+    SkylarkDebugServer.getInstance().pauseIfNecessary(this);
     try {
       doExec(env);
     } catch (EvalException ex) {

@@ -31,11 +31,28 @@ message DebugRequest {
   // The payload describes the type of the request and its arguments, if any.
   oneof payload {
     ListThreadsRequest listThreads = 100;
+    SetBreakpointsRequest setBreakpoints = 101;
+    ContinueExecutionRequest continueExecution = 102;
   }
 }
 
 // A request to list the threads that are currently active running Skylark code.
 message ListThreadsRequest {
+}
+
+// A request to update the breakpoints used by the debug server.
+message SetBreakpointsRequest {
+
+  // The breakpoints that describe where the debug server should pause
+  // evaluation.
+  repeated Breakpoint breakpoint = 1;
+}
+
+// A request to continue execution on a paused thread.
+message ContinueExecutionRequest {
+
+  // The identifier of the thread to continue.
+  int64 thread_id = 1;
 }
 
 // There are two kinds of events: "responses", which correspond to a
@@ -52,6 +69,8 @@ message DebugEvent {
   // about the event.
   oneof payload {
     ListThreadsResponse listThreads = 100;
+    SetBreakpointsResponse setBreakpoints = 101;
+    ContinueExecutionResponse continueExecution = 102;
 
     ThreadStartedEvent threadStarted = 1000;
     ThreadEndedEvent threadEnded = 1001;
@@ -63,6 +82,14 @@ message ListThreadsResponse {
 
   // The threads that are currently active running Skylark code.
   repeated Thread thread = 1;
+}
+
+// The response to a SetBreakpointsRequest.
+message SetBreakpointsResponse {
+}
+
+// The response to a ContinueExecutionRequest.
+message ContinueExecutionResponse {
 }
 
 // An event indicating that a thread has begun executing Skylark code.
@@ -77,6 +104,25 @@ message ThreadEndedEvent {
 
   // The thread that ended.
   Thread thread = 1;
+}
+
+// A location or condition where the debug server will pause execution.
+message Breakpoint {
+
+  oneof condition {
+    // A breakpoint that is triggered when a particular line is reached.
+    Location location = 1;
+  }
+}
+
+// A location in Skylark source code.
+message Location {
+
+  // The path of the Skylark source file.
+  string path = 1;
+
+  // A line number in the file denoted by path.
+  uint32 line_number = 2;
 }
 
 // Information about a thread that is running Skylark code.

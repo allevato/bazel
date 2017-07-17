@@ -118,6 +118,10 @@ class BasicDebugger {
         case LISTTHREADS:
           handleListThreadsResponse(eventProto.getListThreads());
           break;
+        case SETBREAKPOINTS:
+        case CONTINUEEXECUTION:
+          // Nothing to do here.
+          break;
         case THREADSTARTED:
           handleThreadStartedEvent(eventProto.getThreadStarted());
           break;

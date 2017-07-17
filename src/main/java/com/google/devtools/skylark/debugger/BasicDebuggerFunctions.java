@@ -15,6 +15,7 @@
 package com.google.devtools.skylark.debugger;
 
 import com.google.common.collect.ImmutableList;
+import com.google.devtools.build.lib.skylarkinterface.Param;
 import com.google.devtools.build.lib.skylarkinterface.SkylarkSignature;
 import com.google.devtools.build.lib.syntax.BaseFunction;
 import com.google.devtools.build.lib.syntax.BuiltinFunction;
@@ -45,6 +46,62 @@ class BasicDebuggerFunctions {
         }
       };
 
+  @SkylarkSignature(
+      name = "set_line_breakpoint",
+      doc = "Sets a breakpoint at a line in a Skylark source file.",
+      parameters = {
+          @Param(
+              name = "path",
+              type = String.class,
+              doc = "The path to the Skylark source file."
+          ),
+          @Param(
+              name = "line_number",
+              type = Integer.class,
+              doc = "The line number in the Skylark source file."
+          )
+      },
+      returnType = DebugRequest.class,
+      useEnvironment = true
+  )
+  private static final BuiltinFunction setLineBreakpoint =
+      new BuiltinFunction("set_line_breakpoint") {
+        public DebugRequest invoke(String path, Integer lineNumber, Environment env)
+            throws EvalException {
+          Breakpoint breakpoint = Breakpoint.locationBreakpoint(path, lineNumber);
+          BasicDebuggerState state = getState(env);
+          state.breakpoints.add(breakpoint);
+          return DebugRequest.setBreakpointsRequest(state.breakpoints);
+        }
+      };
+
+  @SkylarkSignature(
+      name = "go",
+      doc = "Continues execution of a paused thread.",
+      parameters = {
+          @Param(
+              name = "thread",
+              type = Integer.class,
+              doc = "The identifier of the thread to continue."
+          )
+      },
+      returnType = DebugRequest.class
+  )
+  private static final BuiltinFunction go =
+      new BuiltinFunction("go") {
+        public DebugRequest invoke(Integer lineNumber)
+            throws EvalException {
+          // TODO(allevato): Make the thread identifier optional once the current thread is
+          // tracked.
+          return DebugRequest.continueExecutionRequest(lineNumber);
+        }
+      };
+
+  /** Returns the debug client's mutable state. */
+  private static BasicDebuggerState getState(Environment env) {
+    return (BasicDebuggerState) env.lookup("_state");
+  }
+
   /** Creates the global commands available in the debugger. */
   static Environment.Frame createGlobals() {
     try (Mutability mutability = Mutability.create("DEBUGGER")) {
@@ -52,12 +109,13 @@ class BasicDebuggerFunctions {
       for (BaseFunction function : debuggerFunctions) {
         env.setup(function.getName(), function);
       }
+      env.setup("_state", new BasicDebuggerState());
       return env.getGlobals();
     }
   }
 
   static final List<BaseFunction> debuggerFunctions =
-      ImmutableList.<BaseFunction>of(listThreads);
+      ImmutableList.<BaseFunction>of(listThreads, setLineBreakpoint, go);
 
   static {
     SkylarkSignatureProcessor.configureSkylarkFunctions(BasicDebuggerFunctions.class);

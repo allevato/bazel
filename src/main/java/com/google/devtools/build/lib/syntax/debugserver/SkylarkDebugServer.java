@@ -15,6 +15,8 @@
 package com.google.devtools.build.lib.syntax.debugserver;
 
 import com.google.common.collect.ImmutableList;
+import com.google.devtools.build.lib.events.Location;
+import com.google.devtools.build.lib.syntax.ASTNode;
 import com.google.devtools.build.lib.syntax.Environment;
 import com.google.devtools.build.lib.syntax.EvalException;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugEvent;
@@ -24,7 +26,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 /** Manages the network socket and debugging state for threads running Skylark code. */
 public class SkylarkDebugServer {
@@ -50,8 +56,16 @@ public class SkylarkDebugServer {
   /** Tracks the currently active threads. */
   private ConcurrentHashMap<Long, Object> requestHandlers;
 
+  /** Tracks the semaphores used to block execution of threads. */
+  private ConcurrentHashMap<Long, Semaphore> threadSemaphores;
+
+  /** Breakpoints that are based on location. */
+  private Set<DebugProtos.Location> locationBreakpoints;
+
   public SkylarkDebugServer() {
     requestHandlers = new ConcurrentHashMap<>();
+    threadSemaphores = new ConcurrentHashMap<>();
+    locationBreakpoints = new HashSet<>();
   }
 
   /**
@@ -109,6 +123,38 @@ public class SkylarkDebugServer {
     requestHandlers.remove(threadId);
 
     return result;
+  }
+
+  /**
+   * Pauses the execution of the current thread if there are conditions that should cause it to be
+   * paused, such as a breakpoint being reached.
+   *
+   * @param node the AST node representing the statement or expression currently being executed
+   */
+  public void pauseIfNecessary(ASTNode node) {
+    Location nodeLocation = node.getLocation();
+    if (nodeLocation == null) {
+      return;
+    }
+    Location.LineAndColumn lineAndColumn = nodeLocation.getStartLineAndColumn();
+    if (lineAndColumn == null) {
+      return;
+    }
+    DebugProtos.Location location = DebugProtos.Location.newBuilder()
+        .setPath(nodeLocation.getPath().getBaseName())
+        .setLineNumber(lineAndColumn.getLine())
+        .build();
+    if (locationBreakpoints.contains(location)) {
+      pauseCurrentThread();
+    }
+  }
+
+  /** Pauses the current thread's execution. */
+  private void pauseCurrentThread() {
+    long threadId = Thread.currentThread().getId();
+    Semaphore semaphore = new Semaphore(0);
+    threadSemaphores.put(threadId, semaphore);
+    semaphore.acquireUninterruptibly();
   }
 
   /**
@@ -178,6 +224,12 @@ public class SkylarkDebugServer {
       case LISTTHREADS:
         response = handleListThreadsRequest(sequenceNumber, request.getListThreads());
         break;
+      case SETBREAKPOINTS:
+        response = handleSetBreakpointsRequest(sequenceNumber, request.getSetBreakpoints());
+        break;
+      case CONTINUEEXECUTION:
+        response = handleContinueExecutionRequest(sequenceNumber, request.getContinueExecution());
+        break;
       default:
         // TODO(allevato): Return an error response.
         keepRunning = false;
@@ -196,5 +248,38 @@ public class SkylarkDebugServer {
   private DebugEvent handleListThreadsRequest(
       long sequenceNumber, DebugProtos.ListThreadsRequest listThreads) throws IOException {
     return DebugEvent.listThreadsResponse(sequenceNumber, ImmutableList.of());
+  }
+
+  /** Handles a {@code SetBreakpointsRequest} and returns its response. */
+  private DebugEvent handleSetBreakpointsRequest(
+      long sequenceNumber, DebugProtos.SetBreakpointsRequest setBreakpoints) throws IOException {
+    locationBreakpoints.clear();
+
+    List<DebugProtos.Breakpoint> allBreakpoints = setBreakpoints.getBreakpointList();
+    for (DebugProtos.Breakpoint breakpoint : allBreakpoints) {
+      switch (breakpoint.getConditionCase()) {
+        case LOCATION:
+          locationBreakpoints.add(breakpoint.getLocation());
+          break;
+        default:
+          // TODO(allevato): Handle an unknown breakpoint type? This would happen if the client was
+          // newer than the server.
+          break;
+      }
+    }
+
+    System.err.println(locationBreakpoints);
+    return DebugEvent.setBreakpointsResponse(sequenceNumber);
+  }
+
+  /** Handles a {@code ContinueExecutionRequest} and returns its response. */
+  private DebugEvent handleContinueExecutionRequest(long sequenceNumber,
+      DebugProtos.ContinueExecutionRequest continueExecution) throws IOException {
+    long threadId = continueExecution.getThreadId();
+    Semaphore semaphore = threadSemaphores.remove(threadId);
+    if (semaphore != null) {
+      semaphore.release();
+    }
+    return DebugEvent.continueExecutionResponse(sequenceNumber);
   }
 }
