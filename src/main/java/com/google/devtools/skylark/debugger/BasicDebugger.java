@@ -157,6 +157,9 @@ class BasicDebugger {
         case EVALUATE:
           handleEvaluateResponse(eventProto.getEvaluate());
           break;
+        case LISTFRAMES:
+          handleListFramesResponse(eventProto.getListFrames());
+          break;
         case THREADSTARTED:
           handleThreadStartedEvent(eventProto.getThreadStarted());
           break;
@@ -200,6 +203,22 @@ class BasicDebugger {
   private void handleEvaluateResponse(DebugProtos.EvaluateResponse evaluate) throws IOException {
     System.out.println("\nResult:");
     System.out.println(evaluate.getResult());
+  }
+
+  private void handleListFramesResponse(DebugProtos.ListFramesResponse listFrames)
+      throws IOException {
+    System.out.println("\nCurrent frames:");
+    System.out.println("----");
+    for (DebugProtos.Frame frame : listFrames.getFrameList()) {
+      System.out.println(
+          frame.getFunctionName().isEmpty() ? "<global scope>" : frame.getFunctionName());
+
+      for (DebugProtos.Value value : frame.getBindingList()) {
+        System.out.printf("  * %s = %s\n", value.getLabel(), value.getDescription());
+      }
+
+      System.out.println();
+    }
   }
 
   private void handleThreadStartedEvent(DebugProtos.ThreadStartedEvent threadStarted)

@@ -125,6 +125,28 @@ class BasicDebuggerFunctions {
         }
       };
 
+  @SkylarkSignature(
+      name = "list_frames",
+      doc = "Lists the stack frames of a thread.",
+      parameters = {
+          @Param(
+              name = "thread",
+              type = Integer.class,
+              doc = "The identifier of the thread whose frames should be listed."
+          )
+      },
+      returnType = DebugRequest.class
+  )
+  private static final BuiltinFunction listFrames =
+      new BuiltinFunction("list_frames") {
+        public DebugRequest invoke(Integer threadId)
+            throws EvalException {
+          // TODO(allevato): Make the thread identifier optional once the current thread is
+          // tracked.
+          return DebugRequest.listFramesRequest(threadId);
+        }
+      };
+
   /** Returns the debug client's mutable state. */
   private static BasicDebuggerState getState(Environment env) {
     return (BasicDebuggerState) env.lookup("_state");
@@ -143,7 +165,7 @@ class BasicDebuggerFunctions {
   }
 
   static final List<BaseFunction> debuggerFunctions =
-      ImmutableList.<BaseFunction>of(listThreads, setLineBreakpoint, go, eval);
+      ImmutableList.<BaseFunction>of(listThreads, setLineBreakpoint, go, eval, listFrames);
 
   static {
     SkylarkSignatureProcessor.configureSkylarkFunctions(BasicDebuggerFunctions.class);

@@ -257,6 +257,9 @@ public class SkylarkDebugServer {
       case EVALUATE:
         response = handleEvaluateRequest(sequenceNumber, request.getEvaluate());
         break;
+      case LISTFRAMES:
+        response = handleListFramesRequest(sequenceNumber, request.getListFrames());
+        break;
       default:
         // TODO(allevato): Return an error response.
         keepRunning = false;
@@ -353,5 +356,21 @@ public class SkylarkDebugServer {
       // TODO(allevato): Return error response.
       return DebugEvent.error(sequenceNumber, e.getMessage());
     }
+  }
+
+  /** Handles a {@code ContinueExecutionRequest} and returns its response. */
+  private DebugEvent handleListFramesRequest(long sequenceNumber,
+      DebugProtos.ListFramesRequest listFrames) throws IOException {
+    long threadId = listFrames.getThreadId();
+
+    DebugAdapter adapter = threadAdapters.get(threadId);
+    if (adapter == null) {
+      // TODO(allevato): Return error response.
+      return DebugEvent.error(sequenceNumber,
+          String.format("Thread %d is not running", threadId));
+    }
+
+    Iterable<DebugProtos.Frame> frames = adapter.listFrames();
+    return DebugEvent.listFramesResponse(sequenceNumber, frames);
   }
 }

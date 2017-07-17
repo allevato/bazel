@@ -60,4 +60,10 @@ public class DebugRequest {
             .setThreadId(threadId)
             .setExpression(expression)));
   }
+
+  public static DebugRequest listFramesRequest(long threadId) {
+    return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
+        .setListFrames(DebugProtos.ListFramesRequest.newBuilder()
+            .setThreadId(threadId)));
+  }
 }

@@ -67,6 +67,15 @@ public class DebugEvent {
         .build());
   }
 
+  public static DebugEvent listFramesResponse(
+      long sequenceNumber, Iterable<DebugProtos.Frame> frames) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setListFrames(DebugProtos.ListFramesResponse.newBuilder()
+            .addAllFrame(frames))
+        .build());
+  }
+
   public static DebugEvent threadStartedEvent(DebugProtos.Thread thread) {
     return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
         .setThreadStarted(DebugProtos.ThreadStartedEvent.newBuilder()

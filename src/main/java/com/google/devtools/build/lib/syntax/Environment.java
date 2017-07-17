@@ -25,7 +25,9 @@ import com.google.devtools.build.lib.events.Location;
 import com.google.devtools.build.lib.syntax.Mutability.Freezable;
 import com.google.devtools.build.lib.syntax.Mutability.MutabilityException;
 import com.google.devtools.build.lib.syntax.Parser.Dialect;
+import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import com.google.devtools.build.lib.syntax.debugserver.DebugAdapter;
+import com.google.devtools.build.lib.syntax.debugserver.DebugValueMirror;
 import com.google.devtools.build.lib.util.Fingerprint;
 import com.google.devtools.build.lib.util.Pair;
 import com.google.devtools.build.lib.util.Preconditions;
@@ -378,6 +380,45 @@ public final class Environment implements Freezable {
         throw new EvalException(expr.getLocation(), eventHandler.messages.get(0));
       }
       return expr.eval(Environment.this);
+    }
+
+    @Override
+    public Iterable<DebugProtos.Frame> listFrames() {
+      ImmutableList.Builder<DebugProtos.Frame> frameListBuilder = ImmutableList.builder();
+
+      Continuation currentContinuation = continuation;
+      Frame currentFrame = currentFrame();
+
+      while (currentContinuation != null) {
+        DebugProtos.Frame frame = buildDebuggerFrame(currentFrame)
+            .setFunctionName(currentContinuation.function.getFullName())
+            .build();
+        frameListBuilder.add(frame);
+
+        currentFrame = currentContinuation.lexicalFrame;
+        currentContinuation = currentContinuation.continuation;
+      }
+
+      if (!isGlobal()) {
+        frameListBuilder.add(buildDebuggerFrame(getGlobals()).build());
+      }
+
+      return frameListBuilder.build();
+    }
+
+    /** Returns a {@code Frame} proto for the given environment frame. */
+    private DebugProtos.Frame.Builder buildDebuggerFrame(Frame frame) {
+      DebugProtos.Frame.Builder frameBuilder = DebugProtos.Frame.newBuilder();
+
+      Map<String, Object> bindings = frame.getBindings();
+      for (Map.Entry<String, Object> entry : bindings.entrySet()) {
+        String label = entry.getKey();
+        Object value = entry.getValue();
+        DebugProtos.Value valueProto = new DebugValueMirror(value).asValueProto(label);
+        frameBuilder.addBinding(valueProto);
+      }
+
+      return frameBuilder;
     }
   }
 

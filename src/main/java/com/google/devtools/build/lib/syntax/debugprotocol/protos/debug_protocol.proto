@@ -34,6 +34,7 @@ message DebugRequest {
     SetBreakpointsRequest setBreakpoints = 101;
     ContinueExecutionRequest continueExecution = 102;
     EvaluateRequest evaluate = 103;
+    ListFramesRequest listFrames = 104;
   }
 }
 
@@ -56,6 +57,7 @@ message ContinueExecutionRequest {
   int64 thread_id = 1;
 }
 
+// A request to evaluate a Skylark expression in a thread's current environment.
 message EvaluateRequest {
 
   // The identifier of the thread in whose execution context the expression
@@ -64,6 +66,13 @@ message EvaluateRequest {
 
   // The Skylark expression to evaluate.
   string expression = 2;
+}
+
+// A request to list the stack frames of a thread.
+message ListFramesRequest {
+
+  // The identifier of the thread whose stack frames should be listed.
+  int64 thread_id = 1;
 }
 
 // There are two kinds of events: "responses", which correspond to a
@@ -85,6 +94,7 @@ message DebugEvent {
     SetBreakpointsResponse setBreakpoints = 101;
     ContinueExecutionResponse continueExecution = 102;
     EvaluateResponse evaluate = 103;
+    ListFramesResponse listFrames = 104;
 
     ThreadStartedEvent threadStarted = 1000;
     ThreadEndedEvent threadEnded = 1001;
@@ -121,6 +131,14 @@ message EvaluateResponse {
   Value result = 1;
 }
 
+// The response to a ListFramesRequest.
+message ListFramesResponse {
+
+  // The list of stack frames. The first element in the list is the deepest
+  // frame, and the global scope frame is the last.
+  repeated Frame frame = 1;
+}
+
 // An event indicating that a thread has begun executing Skylark code.
 message ThreadStartedEvent {
 
@@ -142,6 +160,16 @@ message Breakpoint {
     // A breakpoint that is triggered when a particular line is reached.
     Location location = 1;
   }
+}
+
+// A single frame in a thread's stack trace.
+message Frame {
+
+  // The name of the function that this frame represents.
+  string function_name = 1;
+
+  // The variable bindings that are defined in this frame's scope.
+  repeated Value binding = 2;
 }
 
 // A location in Skylark source code.
