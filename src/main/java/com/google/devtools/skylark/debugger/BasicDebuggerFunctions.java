@@ -89,11 +89,39 @@ class BasicDebuggerFunctions {
   )
   private static final BuiltinFunction go =
       new BuiltinFunction("go") {
-        public DebugRequest invoke(Integer lineNumber)
+        public DebugRequest invoke(Integer threadId)
             throws EvalException {
           // TODO(allevato): Make the thread identifier optional once the current thread is
           // tracked.
-          return DebugRequest.continueExecutionRequest(lineNumber);
+          return DebugRequest.continueExecutionRequest(threadId);
+        }
+      };
+
+  @SkylarkSignature(
+      name = "eval",
+      doc = "Evaluates an expression in the context of a thread.",
+      parameters = {
+          @Param(
+              name = "expression",
+              type = String.class,
+              doc = "The expression to evaluate."
+          ),
+          @Param(
+              name = "thread",
+              type = Integer.class,
+              doc = "The identifier of the thread to evaluate in.",
+              positional = false
+          )
+      },
+      returnType = DebugRequest.class
+  )
+  private static final BuiltinFunction eval =
+      new BuiltinFunction("eval") {
+        public DebugRequest invoke(String expression, Integer threadId)
+            throws EvalException {
+          // TODO(allevato): Make the thread identifier optional once the current thread is
+          // tracked.
+          return DebugRequest.evaluateRequest(threadId, expression);
         }
       };
 
@@ -115,7 +143,7 @@ class BasicDebuggerFunctions {
   }
 
   static final List<BaseFunction> debuggerFunctions =
-      ImmutableList.<BaseFunction>of(listThreads, setLineBreakpoint, go);
+      ImmutableList.<BaseFunction>of(listThreads, setLineBreakpoint, go, eval);
 
   static {
     SkylarkSignatureProcessor.configureSkylarkFunctions(BasicDebuggerFunctions.class);

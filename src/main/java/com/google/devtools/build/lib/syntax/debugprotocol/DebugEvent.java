@@ -28,6 +28,14 @@ public class DebugEvent {
     return eventProto;
   }
 
+  public static DebugEvent error(long sequenceNumber, String message) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setError(DebugProtos.Error.newBuilder()
+            .setMessage(message))
+        .build());
+  }
+
   public static DebugEvent listThreadsResponse(
       long sequenceNumber, List<DebugProtos.Thread> threads) {
     return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
@@ -48,6 +56,14 @@ public class DebugEvent {
     return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
         .setSequenceNumber(sequenceNumber)
         .setContinueExecution(DebugProtos.ContinueExecutionResponse.getDefaultInstance())
+        .build());
+  }
+
+  public static DebugEvent evaluateResponse(long sequenceNumber, DebugProtos.Value result) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setSequenceNumber(sequenceNumber)
+        .setEvaluate(DebugProtos.EvaluateResponse.newBuilder()
+            .setResult(result))
         .build());
   }
 

@@ -54,7 +54,7 @@ public class SkylarkDebugServer {
   private OutputStream eventStream;
 
   /** Tracks the currently active threads. */
-  private ConcurrentHashMap<Long, Object> requestHandlers;
+  private ConcurrentHashMap<Long, DebugAdapter> threadAdapters;
 
   /** Tracks the semaphores used to block execution of threads. */
   private ConcurrentHashMap<Long, Semaphore> threadSemaphores;
@@ -63,7 +63,7 @@ public class SkylarkDebugServer {
   private Set<DebugProtos.Location> locationBreakpoints;
 
   public SkylarkDebugServer() {
-    requestHandlers = new ConcurrentHashMap<>();
+    threadAdapters = new ConcurrentHashMap<>();
     threadSemaphores = new ConcurrentHashMap<>();
     locationBreakpoints = new HashSet<>();
   }
@@ -112,7 +112,7 @@ public class SkylarkDebugServer {
       throws EvalException, InterruptedException {
     long threadId = Thread.currentThread().getId();
     // TODO(allevato): Associate a debug adapter with the environment and put that here.
-    requestHandlers.put(threadId, new Object());
+    threadAdapters.put(threadId, env.getDebugAdapter());
     postEvent(DebugEvent.threadStartedEvent(
         DebugProtos.Thread.newBuilder().setId(threadId).build()));
 
@@ -120,7 +120,7 @@ public class SkylarkDebugServer {
 
     postEvent(DebugEvent.threadEndedEvent(
         DebugProtos.Thread.newBuilder().setId(threadId).build()));
-    requestHandlers.remove(threadId);
+    threadAdapters.remove(threadId);
 
     return result;
   }
@@ -230,6 +230,9 @@ public class SkylarkDebugServer {
       case CONTINUEEXECUTION:
         response = handleContinueExecutionRequest(sequenceNumber, request.getContinueExecution());
         break;
+      case EVALUATE:
+        response = handleEvaluateRequest(sequenceNumber, request.getEvaluate());
+        break;
       default:
         // TODO(allevato): Return an error response.
         keepRunning = false;
@@ -281,5 +284,28 @@ public class SkylarkDebugServer {
       semaphore.release();
     }
     return DebugEvent.continueExecutionResponse(sequenceNumber);
+  }
+
+  /** Handles a {@code EvaluateRequest} and returns its response. */
+  private DebugEvent handleEvaluateRequest(long sequenceNumber,
+      DebugProtos.EvaluateRequest evaluate) throws IOException {
+    long threadId = evaluate.getThreadId();
+    String expression = evaluate.getExpression();
+
+    DebugAdapter adapter = threadAdapters.get(threadId);
+    if (adapter == null) {
+      // TODO(allevato): Return error response.
+      return DebugEvent.error(sequenceNumber,
+          String.format("Thread %d is not running", threadId));
+    }
+
+    try {
+      Object result = adapter.evaluate(expression);
+      return DebugEvent.evaluateResponse(
+          sequenceNumber, new DebugValueMirror(result).asValueProto(null));
+    } catch (EvalException | InterruptedException e) {
+      // TODO(allevato): Return error response.
+      return DebugEvent.error(sequenceNumber, e.getMessage());
+    }
   }
 }

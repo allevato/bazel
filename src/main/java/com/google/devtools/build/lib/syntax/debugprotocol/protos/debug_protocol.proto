@@ -33,6 +33,7 @@ message DebugRequest {
     ListThreadsRequest listThreads = 100;
     SetBreakpointsRequest setBreakpoints = 101;
     ContinueExecutionRequest continueExecution = 102;
+    EvaluateRequest evaluate = 103;
   }
 }
 
@@ -55,6 +56,16 @@ message ContinueExecutionRequest {
   int64 thread_id = 1;
 }
 
+message EvaluateRequest {
+
+  // The identifier of the thread in whose execution context the expression
+  // should be evaluated.
+  int64 thread_id = 1;
+
+  // The Skylark expression to evaluate.
+  string expression = 2;
+}
+
 // There are two kinds of events: "responses", which correspond to a
 // DebugRequest sent by the client, and other asynchronous events that may be
 // sent by the server to notify the client of activity in the Skylark code being
@@ -68,13 +79,24 @@ message DebugEvent {
   // The payload describes the type of event and any additional information
   // about the event.
   oneof payload {
+    Error error = 99;
+
     ListThreadsResponse listThreads = 100;
     SetBreakpointsResponse setBreakpoints = 101;
     ContinueExecutionResponse continueExecution = 102;
+    EvaluateResponse evaluate = 103;
 
     ThreadStartedEvent threadStarted = 1000;
     ThreadEndedEvent threadEnded = 1001;
   }
+}
+
+// A response that indicates that an error occurred while handling a debugging
+// request.
+message Error {
+
+  // A message describing the error that occurred.
+  string message = 1;
 }
 
 // The response to a ListThreadsRequest.
@@ -90,6 +112,13 @@ message SetBreakpointsResponse {
 
 // The response to a ContinueExecutionRequest.
 message ContinueExecutionResponse {
+}
+
+// The response to an EvaluateRequest.
+message EvaluateResponse {
+
+  // The result of evaluating an expression.
+  Value result = 1;
 }
 
 // An event indicating that a thread has begun executing Skylark code.
@@ -130,4 +159,22 @@ message Thread {
 
   // The identifier of the thread.
   int64 id = 1;
+}
+
+// The debugger representation of a Skylark value.
+message Value {
+
+  // A label that describes this value at its location in a hierarchy.
+  //
+  // For example, in a stack frame the label would be the name of the variable
+  // to which the value is bound. If this value is an element of a list, then
+  // its value would be its subscript, such as "[4]".
+  string label = 1;
+
+  // A string description of the value.
+  string description = 2;
+
+  // Any child values associated with this value, such as its elements (for a
+  // list or dictionary), its fields (for a struct), and so forth.
+  repeated Value child = 3;
 }

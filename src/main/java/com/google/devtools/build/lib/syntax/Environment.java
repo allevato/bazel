@@ -24,16 +24,21 @@ import com.google.devtools.build.lib.events.EventKind;
 import com.google.devtools.build.lib.events.Location;
 import com.google.devtools.build.lib.syntax.Mutability.Freezable;
 import com.google.devtools.build.lib.syntax.Mutability.MutabilityException;
+import com.google.devtools.build.lib.syntax.Parser.Dialect;
+import com.google.devtools.build.lib.syntax.debugserver.DebugAdapter;
 import com.google.devtools.build.lib.util.Fingerprint;
 import com.google.devtools.build.lib.util.Pair;
 import com.google.devtools.build.lib.util.Preconditions;
 import com.google.devtools.build.lib.util.SpellChecker;
+import com.google.devtools.build.lib.vfs.PathFragment;
 import com.google.devtools.common.options.Options;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -347,6 +352,36 @@ public final class Environment implements Freezable {
       return bindings;
     }
   }
+
+  /** An adapter that allows the debug server to request information from this environment. */
+  @Immutable
+  private final class ConcreteDebugAdapter implements DebugAdapter {
+
+    private final class EvalEventHandler implements EventHandler {
+      List<String> messages = new ArrayList<>();
+
+      @Override
+      public void handle(Event event) {
+        if (event.getKind() == EventKind.ERROR) {
+          messages.add(event.getMessage());
+        }
+      }
+    };
+
+    @Override
+    public Object evaluate(String expression) throws EvalException, InterruptedException {
+      ParserInputSource inputSource = ParserInputSource.create(
+          expression, PathFragment.create("<debug eval>"));
+      EvalEventHandler eventHandler = new EvalEventHandler();
+      Expression expr = Parser.parseExpression(inputSource, eventHandler, Dialect.SKYLARK);
+      if (!eventHandler.messages.isEmpty()) {
+        throw new EvalException(expr.getLocation(), eventHandler.messages.get(0));
+      }
+      return expr.eval(Environment.this);
+    }
+  }
+
+  private final DebugAdapter debugAdapter = new ConcreteDebugAdapter();
 
   /**
    * Static Frame for lexical variables that are always looked up in the current Environment
@@ -832,6 +867,10 @@ public final class Environment implements Freezable {
     vars.addAll(globalFrame.getTransitiveBindings().keySet());
     vars.addAll(dynamicFrame.getTransitiveBindings().keySet());
     return vars;
+  }
+
+  public DebugAdapter getDebugAdapter() {
+    return debugAdapter;
   }
 
   @Override

@@ -53,4 +53,11 @@ public class DebugRequest {
         .setContinueExecution(DebugProtos.ContinueExecutionRequest.newBuilder()
             .setThreadId(threadId)));
   }
+
+  public static DebugRequest evaluateRequest(long threadId, String expression) {
+    return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
+        .setEvaluate(DebugProtos.EvaluateRequest.newBuilder()
+            .setThreadId(threadId)
+            .setExpression(expression)));
+  }
 }

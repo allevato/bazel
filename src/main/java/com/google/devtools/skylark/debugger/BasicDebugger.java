@@ -115,12 +115,18 @@ class BasicDebugger {
       DebugProtos.DebugEvent eventProto = DebugProtos.DebugEvent.parseDelimitedFrom(eventStream);
 
       switch (eventProto.getPayloadCase()) {
+        case ERROR:
+          handleError(eventProto.getError());
+          break;
         case LISTTHREADS:
           handleListThreadsResponse(eventProto.getListThreads());
           break;
         case SETBREAKPOINTS:
         case CONTINUEEXECUTION:
           // Nothing to do here.
+          break;
+        case EVALUATE:
+          handleEvaluateResponse(eventProto.getEvaluate());
           break;
         case THREADSTARTED:
           handleThreadStartedEvent(eventProto.getThreadStarted());
@@ -142,19 +148,27 @@ class BasicDebugger {
     }
   }
 
+  private void handleError(DebugProtos.Error error) {
+    System.out.println("\nERROR: " + error.getMessage());
+  }
+
   private void handleListThreadsResponse(DebugProtos.ListThreadsResponse listThreads)
-      throws IOException{
+      throws IOException {
     System.out.println("\nCurrent threads:");
     TextFormat.print(listThreads, System.out);
   }
 
+  private void handleEvaluateResponse(DebugProtos.EvaluateResponse evaluate) throws IOException {
+    System.out.println("\nResult:");
+    System.out.println(evaluate.getResult());
+  }
+
   private void handleThreadStartedEvent(DebugProtos.ThreadStartedEvent threadStarted)
-      throws IOException{
+      throws IOException {
     System.out.printf("\n[Thread %d has started]\n", threadStarted.getThread().getId());
   }
 
-  private void handleThreadEndedEvent(DebugProtos.ThreadEndedEvent threadEnded)
-      throws IOException{
+  private void handleThreadEndedEvent(DebugProtos.ThreadEndedEvent threadEnded) throws IOException {
     System.out.printf("\n[Thread %d has ended]\n", threadEnded.getThread().getId());
   }
 
