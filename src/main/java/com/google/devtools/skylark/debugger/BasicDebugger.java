@@ -38,6 +38,8 @@ class BasicDebugger {
 
   private static final String PROMPT = "debugger> ";
 
+  private static final int CONNECTION_ATTEMPTS = 10;
+
   private static final EventHandler PRINT_HANDLER =
       new EventHandler() {
         @Override
@@ -86,8 +88,35 @@ class BasicDebugger {
     }
   }
 
+  private Socket makeConnectionAttempts() {
+    int attempt = 1;
+    while (attempt <= CONNECTION_ATTEMPTS) {
+      System.out.printf("Attempting to connect to %s:%s (%d of %d)... ",
+          options.host, options.port, attempt++, CONNECTION_ATTEMPTS);
+
+      try {
+        Socket socket = new Socket(options.host, options.port);
+        System.out.println("connected.");
+        return socket;
+      }
+      catch (IOException e) {
+        System.out.println(e.getMessage());
+      }
+
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {}
+    }
+
+    return null;
+  }
+
   private void open() throws IOException {
-    socket = new Socket(options.host, options.port);
+    socket = makeConnectionAttempts();
+    if (socket == null) {
+      System.out.println("ERROR: Could not connect to debug server.");
+      System.exit(1);
+    }
     eventStream = socket.getInputStream();
     requestStream = socket.getOutputStream();
 
