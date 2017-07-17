@@ -184,7 +184,17 @@ class BasicDebugger {
   private void handleListThreadsResponse(DebugProtos.ListThreadsResponse listThreads)
       throws IOException {
     System.out.println("\nCurrent threads:");
-    TextFormat.print(listThreads, System.out);
+    System.out.println("----");
+    for (DebugProtos.Thread thread : listThreads.getThreadList()) {
+      System.out.printf("%5d: ", thread.getId());
+      if (thread.getIsPaused()) {
+        DebugProtos.Location location = thread.getLocation();
+        System.out.printf("paused at %s:%d\n", location.getPath(), location.getLineNumber());
+      } else {
+        System.out.println("running");
+      }
+    }
+    System.out.println();
   }
 
   private void handleEvaluateResponse(DebugProtos.EvaluateResponse evaluate) throws IOException {

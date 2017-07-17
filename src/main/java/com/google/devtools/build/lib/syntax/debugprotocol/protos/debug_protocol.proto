@@ -159,6 +159,13 @@ message Thread {
 
   // The identifier of the thread.
   int64 id = 1;
+
+  // Indicates whether the thread is paused (if true) or running (if false).
+  bool is_paused = 2;
+
+  // If the thread is paused, this field contains the location in Skylark code
+  // of the next statement or expression that will be executed.
+  Location location = 3;
 }
 
 // The debugger representation of a Skylark value.

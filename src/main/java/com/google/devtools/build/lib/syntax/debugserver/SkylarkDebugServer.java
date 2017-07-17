@@ -30,10 +30,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
 
 /** Manages the network socket and debugging state for threads running Skylark code. */
 public class SkylarkDebugServer {
+
+  /** Information about a paused thread. */
+  private class PausedThreadInfo {
+
+    /** The AST node where execution is currently paused. */
+    ASTNode astNode;
+
+    PausedThreadInfo(ASTNode astNode) {
+      this.astNode = astNode;
+    }
+  }
 
   private static SkylarkDebugServer instance;
 
@@ -56,15 +66,15 @@ public class SkylarkDebugServer {
   /** Tracks the currently active threads. */
   private ConcurrentHashMap<Long, DebugAdapter> threadAdapters;
 
-  /** Tracks the semaphores used to block execution of threads. */
-  private ConcurrentHashMap<Long, Semaphore> threadSemaphores;
+  /** Tracks the objects used to block execution of threads. */
+  private ConcurrentHashMap<Long, PausedThreadInfo> pausedThreads;
 
   /** Breakpoints that are based on location. */
   private Set<DebugProtos.Location> locationBreakpoints;
 
   public SkylarkDebugServer() {
     threadAdapters = new ConcurrentHashMap<>();
-    threadSemaphores = new ConcurrentHashMap<>();
+    pausedThreads = new ConcurrentHashMap<>();
     locationBreakpoints = new HashSet<>();
   }
 
@@ -132,29 +142,43 @@ public class SkylarkDebugServer {
    * @param node the AST node representing the statement or expression currently being executed
    */
   public void pauseIfNecessary(ASTNode node) {
+    DebugProtos.Location location = getLocationProto(node);
+    if (location == null) {
+      return;
+    }
+    if (locationBreakpoints.contains(location)) {
+      pauseCurrentThread(node);
+    }
+  }
+
+  /** Returns a {@code Location} proto with the location of the given AST node. */
+  private DebugProtos.Location getLocationProto(ASTNode node) {
     Location nodeLocation = node.getLocation();
     if (nodeLocation == null) {
-      return;
+      return null;
     }
     Location.LineAndColumn lineAndColumn = nodeLocation.getStartLineAndColumn();
     if (lineAndColumn == null) {
-      return;
+      return null;
     }
     DebugProtos.Location location = DebugProtos.Location.newBuilder()
         .setPath(nodeLocation.getPath().getBaseName())
         .setLineNumber(lineAndColumn.getLine())
         .build();
-    if (locationBreakpoints.contains(location)) {
-      pauseCurrentThread();
-    }
+    return location;
   }
 
   /** Pauses the current thread's execution. */
-  private void pauseCurrentThread() {
+  private void pauseCurrentThread(ASTNode node) {
     long threadId = Thread.currentThread().getId();
-    Semaphore semaphore = new Semaphore(0);
-    threadSemaphores.put(threadId, semaphore);
-    semaphore.acquireUninterruptibly();
+    PausedThreadInfo pauseInfo = new PausedThreadInfo(node);
+    pausedThreads.put(threadId, pauseInfo);
+    synchronized(pauseInfo) {
+      try {
+        pauseInfo.wait();
+      } catch (InterruptedException e) {
+      }
+    }
   }
 
   /**
@@ -250,7 +274,27 @@ public class SkylarkDebugServer {
   /** Handles a {@code ListThreadsRequest} and returns its response. */
   private DebugEvent handleListThreadsRequest(
       long sequenceNumber, DebugProtos.ListThreadsRequest listThreads) throws IOException {
-    return DebugEvent.listThreadsResponse(sequenceNumber, ImmutableList.of());
+    ImmutableList.Builder<DebugProtos.Thread> threadListBuilder = ImmutableList.builder();
+
+    // TODO(allevato): Create a separate thread lock and synchronize all thread-based operations
+    // around it instead of having separate concurrent hash maps.
+    synchronized (threadAdapters) {
+      for (long threadId : threadAdapters.keySet()) {
+        DebugProtos.Thread.Builder threadBuilder = DebugProtos.Thread.newBuilder()
+            .setId(threadId);
+
+        PausedThreadInfo pauseInfo = pausedThreads.get(threadId);
+        if (pauseInfo != null) {
+          threadBuilder
+              .setIsPaused(true)
+              .setLocation(getLocationProto(pauseInfo.astNode));
+        }
+
+        threadListBuilder.add(threadBuilder.build());
+      }
+    }
+
+    return DebugEvent.listThreadsResponse(sequenceNumber, threadListBuilder.build());
   }
 
   /** Handles a {@code SetBreakpointsRequest} and returns its response. */
@@ -279,9 +323,11 @@ public class SkylarkDebugServer {
   private DebugEvent handleContinueExecutionRequest(long sequenceNumber,
       DebugProtos.ContinueExecutionRequest continueExecution) throws IOException {
     long threadId = continueExecution.getThreadId();
-    Semaphore semaphore = threadSemaphores.remove(threadId);
-    if (semaphore != null) {
-      semaphore.release();
+    PausedThreadInfo pauseInfo = pausedThreads.remove(threadId);
+    if (pauseInfo != null) {
+      synchronized (pauseInfo) {
+        pauseInfo.notify();
+      }
     }
     return DebugEvent.continueExecutionResponse(sequenceNumber);
   }
