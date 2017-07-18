@@ -199,19 +199,17 @@ message Thread {
 // The debugger representation of a Skylark value.
 message Value {
 
-  // A label that describes this value at its location in a hierarchy.
+  // A label that describes this value's location or source in a value
+  // hierarchy.
   //
-  // For example, in a stack frame the label would be the name of the variable
-  // to which the value is bound. If this value is an element of a list, then
-  // its value would be its subscript, such as "[4]".
+  // For example, in a stack frame, the label would be the name of the variable
+  // to which the value is bound. For a value that is an element of a list, its
+  // its label would be its subscript, such as "[4]". A value that is a field in
+  // a struct would use the field's name as its label, and so forth.
   string label = 1;
 
   // A string description of the value.
   string description = 2;
-
-  // Any child values associated with this value, such as its elements (for a
-  // list or dictionary), its fields (for a struct), and so forth.
-  repeated Value child = 3;
 
   // A string describing the type of the value.
   //
@@ -219,5 +217,9 @@ message Value {
   // as far as the debugging view is concerned; for example, dictionaries will
   // be rendered as sequences of key/value pairs ("entries") but the entries
   // themselves do not have a meaningful type with respect to our rendering.
-  string type = 4;
+  string type = 3;
+
+  // Any child values associated with this value, such as its elements (for a
+  // list or dictionary), its fields (for a struct), and so forth.
+  repeated Value child = 4;
 }
