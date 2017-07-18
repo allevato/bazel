@@ -72,4 +72,15 @@ class CommandLineScanner {
       throw new IllegalArgumentException("Expected an integer");
     }
   }
+
+  /**
+   * Returns the next long integer in the command line string, or the default value if not present.
+   */
+  long optionalNextLong(long defaultValue) {
+    try {
+      return scanner.nextLong();
+    } catch (NoSuchElementException e) {
+      return defaultValue;
+    }
+  }
 }

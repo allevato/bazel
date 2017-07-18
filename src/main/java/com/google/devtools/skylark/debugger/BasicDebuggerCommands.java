@@ -41,9 +41,10 @@ class BasicDebuggerCommands {
   private static final Command go = new Command("go", "g") {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
-      // TODO(allevato): Make the thread identifier optional once the current thread is
-      // tracked.
-      long threadId = scanner.nextLong();
+      long threadId = scanner.optionalNextLong(state.getCurrentThread());
+      if (threadId == 0) {
+        throw new IllegalStateException("Not on a Skylark thread");
+      }
       return DebugRequest.continueExecutionRequest(threadId);
     }
   };
@@ -51,10 +52,11 @@ class BasicDebuggerCommands {
   private static final Command eval = new Command("eval", "p") {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
-      // TODO(allevato): Make the thread identifier optional once the current thread is
-      // tracked.
       String expression = scanner.nextString();
-      long threadId = scanner.nextLong();
+      long threadId = scanner.optionalNextLong(state.getCurrentThread());
+      if (threadId == 0) {
+        throw new IllegalStateException("Not on a Skylark thread");
+      }
 
       return DebugRequest.evaluateRequest(threadId, expression);
     }
@@ -63,9 +65,10 @@ class BasicDebuggerCommands {
   private static final Command listFrames = new Command("frames", "f") {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
-      // TODO(allevato): Make the thread identifier optional once the current thread is
-      // tracked.
-      long threadId = scanner.nextLong();
+      long threadId = scanner.optionalNextLong(state.getCurrentThread());
+      if (threadId == 0) {
+        throw new IllegalStateException("Not on a Skylark thread");
+      }
       return DebugRequest.listFramesRequest(threadId);
     }
   };

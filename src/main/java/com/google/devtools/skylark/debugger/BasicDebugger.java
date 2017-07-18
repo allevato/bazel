@@ -31,7 +31,11 @@ import java.util.concurrent.Semaphore;
 /** A basic terminal-based debugger for Skylark code. */
 class BasicDebugger {
 
-  private static final String PROMPT = "debugger> ";
+  private static final String LOGO = "\uD83C\uDF3F \uD83D\uDD77";
+
+  private static final String PROMPT_WITH_THREAD_FORMAT = LOGO + " (%s)> ";
+
+  private static final String PROMPT_WITHOUT_THREAD = LOGO + " (not on thread)> ";
 
   private static final int CONNECTION_ATTEMPTS = 10;
 
@@ -58,8 +62,19 @@ class BasicDebugger {
     this.responseLatch = new Semaphore(0);
   }
 
-  private String prompt() {
-    System.out.print(PROMPT);
+  private void printPrompt() {
+    synchronized (debuggerState) {
+      long threadId = debuggerState.getCurrentThread();
+      if (threadId == 0) {
+        System.out.print(PROMPT_WITHOUT_THREAD);
+      } else {
+        String prompt = String.format(PROMPT_WITH_THREAD_FORMAT, threadId);
+        System.out.print(prompt);
+      }
+    }
+  }
+
+  private String readCommandLine() {
     try {
       return reader.readLine();
     } catch (IOException io) {
@@ -123,39 +138,41 @@ class BasicDebugger {
     while (running) {
       DebugProtos.DebugEvent eventProto = DebugProtos.DebugEvent.parseDelimitedFrom(eventStream);
 
-      switch (eventProto.getPayloadCase()) {
-        case ERROR:
-          handleError(eventProto.getError());
-          break;
-        case LISTTHREADS:
-          handleListThreadsResponse(eventProto.getListThreads());
-          break;
-        case SETBREAKPOINTS:
-        case CONTINUEEXECUTION:
-          // Nothing to do here.
-          break;
-        case EVALUATE:
-          handleEvaluateResponse(eventProto.getEvaluate());
-          break;
-        case LISTFRAMES:
-          handleListFramesResponse(eventProto.getListFrames());
-          break;
-        case THREADSTARTED:
-          handleThreadStartedEvent(eventProto.getThreadStarted());
-          break;
-        case THREADENDED:
-          handleThreadEndedEvent(eventProto.getThreadEnded());
-          break;
-        case THREADPAUSED:
-          handleThreadPausedEvent(eventProto.getThreadPaused());
-          break;
-        case THREADCONTINUED:
-          handleThreadContinuedEvent(eventProto.getThreadContinued());
-          break;
-        default:
-          System.out.println("Unknown event received from server:");
-          TextFormat.print(eventProto, System.out);
-          break;
+      synchronized (debuggerState) {
+        switch (eventProto.getPayloadCase()) {
+          case ERROR:
+            handleError(eventProto.getError());
+            break;
+          case LISTTHREADS:
+            handleListThreadsResponse(eventProto.getListThreads());
+            break;
+          case SETBREAKPOINTS:
+          case CONTINUEEXECUTION:
+            // Nothing to do here.
+            break;
+          case EVALUATE:
+            handleEvaluateResponse(eventProto.getEvaluate());
+            break;
+          case LISTFRAMES:
+            handleListFramesResponse(eventProto.getListFrames());
+            break;
+          case THREADSTARTED:
+            handleThreadStartedEvent(eventProto.getThreadStarted());
+            break;
+          case THREADENDED:
+            handleThreadEndedEvent(eventProto.getThreadEnded());
+            break;
+          case THREADPAUSED:
+            handleThreadPausedEvent(eventProto.getThreadPaused());
+            break;
+          case THREADCONTINUED:
+            handleThreadContinuedEvent(eventProto.getThreadContinued());
+            break;
+          default:
+            System.out.println("Unknown event received from server:");
+            TextFormat.print(eventProto, System.out);
+            break;
+        }
       }
 
       // TODO(allevato): Handle an exit message.
@@ -163,6 +180,8 @@ class BasicDebugger {
       if (eventProto.getSequenceNumber() != 0) {
         responseLatch.release();
       }
+
+      printPrompt();
     }
   }
 
@@ -209,11 +228,23 @@ class BasicDebugger {
 
   private void handleThreadStartedEvent(DebugProtos.ThreadStartedEvent threadStarted)
       throws IOException {
-    System.out.printf("\n[Thread %d has started]\n", threadStarted.getThread().getId());
+    long threadId = threadStarted.getThread().getId();
+    System.out.printf("\n[Thread %d has started]\n", threadId);
+
+    // If there is no current thread, set it to the new one.
+    if (debuggerState.getCurrentThread() == 0) {
+      debuggerState.setCurrentThread(threadId);
+    }
   }
 
   private void handleThreadEndedEvent(DebugProtos.ThreadEndedEvent threadEnded) throws IOException {
-    System.out.printf("\n[Thread %d has ended]\n", threadEnded.getThread().getId());
+    long threadId = threadEnded.getThread().getId();
+    System.out.printf("\n[Thread %d has ended]\n", threadId);
+
+    // If the current thread is the one that ended, clear it.
+    if (debuggerState.getCurrentThread() == threadId) {
+      debuggerState.setCurrentThread(0);
+    }
   }
 
   private void handleThreadPausedEvent(DebugProtos.ThreadPausedEvent threadPaused)
@@ -275,8 +306,12 @@ class BasicDebugger {
 
     buildCommandMap();
 
+    // Future prompts will be printed as part of the event loop, so we don't need to print it here.
+    printPrompt();
+
     String input;
-    while ((input = prompt()) != null) {
+
+    while ((input = readCommandLine()) != null) {
       try {
         DebugRequest request = executeCommand(input);
         if (request != null) {

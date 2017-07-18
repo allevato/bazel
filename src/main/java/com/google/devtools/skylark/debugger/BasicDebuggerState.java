@@ -23,8 +23,11 @@ class BasicDebuggerState {
 
   private Set<Breakpoint> breakpoints;
 
+  private long currentThreadId;
+
   BasicDebuggerState() {
     breakpoints = new HashSet<>();
+    currentThreadId = 0;
   }
 
   /** Gets an immutable copy of the state's current breakpoints. */
@@ -35,5 +38,15 @@ class BasicDebuggerState {
   /** Adds a breakpoint to the state. */
   void addBreakpoint(Breakpoint breakpoint) {
     breakpoints.add(breakpoint);
+  }
+
+  /** Gets the current thread ID. */
+  long getCurrentThread() {
+    return currentThreadId;
+  }
+
+  /** Sets the current thread ID. */
+  void setCurrentThread(long threadId) {
+    currentThreadId = threadId;
   }
 }
