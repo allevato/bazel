@@ -31,11 +31,11 @@ import java.util.concurrent.Semaphore;
 /** A basic terminal-based debugger for Skylark code. */
 class BasicDebugger {
 
-  private static final String LOGO = "\uD83C\uDF3F \uD83D\uDD77";
+  private static final String LOGO = "\uD83C\uDF3F \uD83D\uDD77 ";
 
-  private static final String PROMPT_WITH_THREAD_FORMAT = LOGO + " (%s)> ";
+  private static final String PROMPT_WITH_THREAD_FORMAT = LOGO + " on thread %s> ";
 
-  private static final String PROMPT_WITHOUT_THREAD = LOGO + " (not on thread)> ";
+  private static final String PROMPT_WITHOUT_THREAD = LOGO + " not on thread> ";
 
   private static final int CONNECTION_ATTEMPTS = 10;
 
@@ -289,7 +289,13 @@ class BasicDebugger {
 
   private DebugRequest executeCommand(String commandLine) {
     CommandLineScanner scanner = new CommandLineScanner(commandLine);
-    String commandName = scanner.nextString();
+
+    String commandName = null;
+    try {
+      commandName = scanner.nextString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
 
     Command command = commandMap.get(commandName);
     if (command == null) {
@@ -305,8 +311,6 @@ class BasicDebugger {
     long sequenceNumber = 1;
 
     buildCommandMap();
-
-    // Future prompts will be printed as part of the event loop, so we don't need to print it here.
     printPrompt();
 
     String input;
@@ -320,9 +324,15 @@ class BasicDebugger {
           requestStream.flush();
 
           responseLatch.acquireUninterruptibly();
+
+          // We don't need to print the prompt after a request because the event loop will take care
+          // of it when the response comes in.
+        } else {
+          printPrompt();
         }
       } catch (Exception e) {
-        e.printStackTrace();
+        System.out.println("ERROR: " + e.getMessage() + "\n");
+        printPrompt();
       }
     }
   }

@@ -73,11 +73,22 @@ class BasicDebuggerCommands {
     }
   };
 
+  private static final Command setThread = new Command("setthread", "st") {
+    @Override
+    public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
+      // TODO(allevato): Disallow threads that don't exist.
+      long threadId = scanner.nextLong();
+      state.setCurrentThread(threadId);
+      return null;
+    }
+  };
+
   static final ImmutableList<Command> COMMAND_LIST = ImmutableList.of(
+      eval,
+      go,
+      listFrames,
       listThreads,
       setLineBreakpoint,
-      go,
-      eval,
-      listFrames
+      setThread
   );
 }
