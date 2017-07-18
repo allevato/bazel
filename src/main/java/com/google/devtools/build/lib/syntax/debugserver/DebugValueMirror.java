@@ -97,6 +97,7 @@ public class DebugValueMirror {
           new DebugValueMirror(entry.getValue()).asValueProto("value");
 
       DebugProtos.Value.Builder entryBuilder = DebugProtos.Value.newBuilder()
+          .setLabel("(entry)")
           .addChild(entryKey)
           .addChild(entryValue);
       builder.addChild(entryBuilder);
