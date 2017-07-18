@@ -25,9 +25,12 @@ class BasicDebuggerState {
 
   private long currentThreadId;
 
+  private boolean shouldExit;
+
   BasicDebuggerState() {
     breakpoints = new HashSet<>();
     currentThreadId = 0;
+    shouldExit = false;
   }
 
   /** Gets an immutable copy of the state's current breakpoints. */
@@ -48,5 +51,15 @@ class BasicDebuggerState {
   /** Sets the current thread ID. */
   void setCurrentThread(long threadId) {
     currentThreadId = threadId;
+  }
+
+  /** Indicates whether the debugger should exit at the next opportunity. */
+  boolean shouldExit() {
+    return shouldExit;
+  }
+
+  /** Tells the debugger to exit at the next opportunity. */
+  void exitAtNextOpportunity() {
+    shouldExit = true;
   }
 }

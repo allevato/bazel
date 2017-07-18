@@ -83,12 +83,24 @@ class BasicDebuggerCommands {
     }
   };
 
+  private static final Command quit = new Command("quit", "q") {
+    @Override
+    public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
+      System.out.println("Shutting down.");
+      state.exitAtNextOpportunity();
+      // TODO(allevato): Send a request that allows the debug server to clean up; for example,
+      // clear out breakpoints and continue execution of any paused threads.
+      return null;
+    }
+  };
+
   static final ImmutableList<Command> COMMAND_LIST = ImmutableList.of(
       print,
       go,
       listFrames,
       listThreads,
       setLineBreakpoint,
-      setThread
+      setThread,
+      quit
   );
 }

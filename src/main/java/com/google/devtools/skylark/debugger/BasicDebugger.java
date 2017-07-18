@@ -315,7 +315,7 @@ class BasicDebugger {
 
     String input;
 
-    while ((input = readCommandLine()) != null) {
+    while (!debuggerState.shouldExit() && (input = readCommandLine()) != null) {
       try {
         DebugRequest request = executeCommand(input);
         if (request != null) {
@@ -327,7 +327,7 @@ class BasicDebugger {
 
           // We don't need to print the prompt after a request because the event loop will take care
           // of it when the response comes in.
-        } else {
+        } else if (!debuggerState.shouldExit()) {
           printPrompt();
         }
       } catch (Exception e) {
