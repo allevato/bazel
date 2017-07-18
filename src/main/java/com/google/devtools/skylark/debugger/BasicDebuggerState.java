@@ -14,15 +14,26 @@
 
 package com.google.devtools.skylark.debugger;
 
+import com.google.common.collect.ImmutableSet;
 import java.util.HashSet;
 import java.util.Set;
 
 /** Manages the debugger's mutable state. */
 class BasicDebuggerState {
 
-  Set<Breakpoint> breakpoints;
+  private Set<Breakpoint> breakpoints;
 
   BasicDebuggerState() {
     breakpoints = new HashSet<>();
+  }
+
+  /** Gets an immutable copy of the state's current breakpoints. */
+  ImmutableSet<Breakpoint> getBreakpoints() {
+    return ImmutableSet.copyOf(breakpoints);
+  }
+
+  /** Adds a breakpoint to the state. */
+  void addBreakpoint(Breakpoint breakpoint) {
+    breakpoints.add(breakpoint);
   }
 }
