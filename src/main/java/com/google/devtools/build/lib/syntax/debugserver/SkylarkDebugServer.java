@@ -126,13 +126,14 @@ public class SkylarkDebugServer {
     postEvent(DebugEvent.threadStartedEvent(
         DebugProtos.Thread.newBuilder().setId(threadId).build()));
 
-    T result = callable.call();
-
-    postEvent(DebugEvent.threadEndedEvent(
-        DebugProtos.Thread.newBuilder().setId(threadId).build()));
-    threadAdapters.remove(threadId);
-
-    return result;
+    try {
+      return callable.call();
+    } finally {
+      // TODO(allevato): Communicate whether the exit was successful or not in the event.
+      postEvent(DebugEvent.threadEndedEvent(
+          DebugProtos.Thread.newBuilder().setId(threadId).build()));
+      threadAdapters.remove(threadId);
+    }
   }
 
   /**
