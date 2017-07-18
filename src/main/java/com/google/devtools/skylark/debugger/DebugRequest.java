@@ -48,10 +48,11 @@ class DebugRequest {
             .addAllBreakpoint(ImmutableList.copyOf(breakpointProtos))));
   }
 
-  static DebugRequest continueExecutionRequest(long threadId) {
+  static DebugRequest continueExecutionRequest(long threadId, DebugProtos.Stepping stepping) {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
         .setContinueExecution(DebugProtos.ContinueExecutionRequest.newBuilder()
-            .setThreadId(threadId)));
+            .setThreadId(threadId)
+            .setStepping(stepping)));
   }
 
   static DebugRequest evaluateRequest(long threadId, String expression) {

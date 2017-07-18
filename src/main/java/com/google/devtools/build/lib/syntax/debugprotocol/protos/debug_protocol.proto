@@ -55,6 +55,9 @@ message ContinueExecutionRequest {
 
   // The identifier of the thread to continue.
   int64 thread_id = 1;
+
+  // Describes the stepping behavior to use when continuing execution.
+  Stepping stepping = 2;
 }
 
 // A request to evaluate a Skylark expression in a thread's current environment.
@@ -198,6 +201,26 @@ message Location {
 
   // A line number in the file denoted by path.
   uint32 line_number = 2;
+}
+
+// Describes the stepping behavior that should occur when execution of a thread
+// is continued.
+enum Stepping {
+
+  // Do not step; continue execution until it completes or is paused for some
+  // other reason (such as hitting another breakpoint).
+  NONE = 0;
+
+  // Step over the next statement and any functions that it may call.
+  OVER = 1;
+
+  // If the thread is paused on a statement that contains a function call,
+  // step into that function. Otherwise, this is the same as OVER.
+  INTO = 2;
+
+  // Continue execution until the current function has been exited and then
+  // pause.
+  OUT = 3;
 }
 
 // Information about a thread that is running Skylark code.

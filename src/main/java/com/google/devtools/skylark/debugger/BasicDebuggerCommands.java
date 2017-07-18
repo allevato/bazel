@@ -17,6 +17,7 @@ package com.google.devtools.skylark.debugger;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
+import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 
 /** Commands supported by the basic debugger. */
 class BasicDebuggerCommands {
@@ -27,8 +28,31 @@ class BasicDebuggerCommands {
   private static final String PRINT_DOC = "Evaluates and prints a Skylark expression";
   private static final String LIST_FRAMES_DOC = "Lists the stack frames of a thread";
   private static final String SET_THREAD_DOC = "Switches the debugger to a different thread";
+  private static final String STEP_INTO_DOC = "Steps into the next function";
+  private static final String STEP_OUT_DOC = "Steps out of the current function";
+  private static final String STEP_OVER_DOC = "Steps over the next statement";
   private static final String QUIT_DOC = "Exits the debugger";
   private static final String HELP_DOC = "Displays debugger help";
+
+  /** Wraps the common functionality of commands that send {@code ContinueExecutionRequest}s. */
+  private static class ContinueExecutionCommand extends Command {
+    private final DebugProtos.Stepping stepping;
+
+    ContinueExecutionCommand(
+        String shortName, String longName, String docString, DebugProtos.Stepping stepping) {
+      super(shortName, longName, docString);
+      this.stepping = stepping;
+    }
+
+    @Override
+    public final DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
+      long threadId = scanner.optionalNextLong(state.getCurrentThread());
+      if (threadId == 0) {
+        throw new IllegalStateException("Not on a Skylark thread");
+      }
+      return DebugRequest.continueExecutionRequest(threadId, stepping);
+    }
+  }
 
   private static final Command listThreads =
       new Command("threads", "t", LIST_THREADS_DOC) {
@@ -51,17 +75,17 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command go =
-      new Command("go", "g", GO_DOC) {
-    @Override
-    public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
-      long threadId = scanner.optionalNextLong(state.getCurrentThread());
-      if (threadId == 0) {
-        throw new IllegalStateException("Not on a Skylark thread");
-      }
-      return DebugRequest.continueExecutionRequest(threadId);
-    }
-  };
+  private static final Command go = new ContinueExecutionCommand(
+      "go", "g", GO_DOC, DebugProtos.Stepping.NONE);
+
+  private static final Command stepOver = new ContinueExecutionCommand(
+      "stepover", "s", STEP_OVER_DOC, DebugProtos.Stepping.OVER);
+
+  private static final Command stepInto = new ContinueExecutionCommand(
+      "stepin", "si", STEP_INTO_DOC, DebugProtos.Stepping.INTO);
+
+  private static final Command stepOut = new ContinueExecutionCommand(
+      "stepout", "so", STEP_OUT_DOC, DebugProtos.Stepping.OUT);
 
   private static final Command print =
       new Command("print", "p", PRINT_DOC) {
@@ -161,6 +185,9 @@ class BasicDebuggerCommands {
       print,
       setLineBreakpoint,
       setThread,
+      stepInto,
+      stepOut,
+      stepOver,
       quit
   );
 
