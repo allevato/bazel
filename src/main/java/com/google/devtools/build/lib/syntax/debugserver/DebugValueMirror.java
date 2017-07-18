@@ -14,7 +14,12 @@
 
 package com.google.devtools.build.lib.syntax.debugserver;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Ordering;
+import com.google.devtools.build.lib.syntax.ClassObject;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
+import java.util.List;
+import java.util.Map;
 
 /** Generates the debugger representation of a Skylark value. */
 public class DebugValueMirror {
@@ -33,8 +38,69 @@ public class DebugValueMirror {
     return valueBuilder.build();
   }
 
+  /** Returns a {@code Value} proto builder containing the debugger representation of a value. */
   private static DebugProtos.Value.Builder makeValueBuilder(Object value) {
-    // TODO(allevato): Handle various types.
-    return DebugProtos.Value.newBuilder().setDescription(value.toString());
+    Class<?> type = value.getClass();
+    DebugProtos.Value.Builder builder = DebugProtos.Value.newBuilder();
+
+    if (type == String.class) {
+      String stringValue = (String) value;
+      return builder.setDescription(stringValue);
+    }
+    if (Number.class.isAssignableFrom(type)) {
+      Number numberValue = (Number) value;
+      return builder.setDescription(numberValue.toString());
+    }
+    if (List.class.isAssignableFrom(type)) {
+      List<?> listValue = (List<?>) value;
+      return buildListValue(builder, listValue);
+    }
+    if (Map.class.isAssignableFrom(type)) {
+      Map<?, ?> dictValue = (Map<?, ?>) value;
+      return buildDictValue(builder, dictValue);
+    }
+    if (ClassObject.class.isAssignableFrom(type)) {
+      ClassObject structValue = (ClassObject) value;
+      return buildStructValue(builder, structValue);
+    }
+    return builder.setDescription(value.toString());
+  }
+
+  private static DebugProtos.Value.Builder buildListValue(
+      DebugProtos.Value.Builder builder, List<?> listValue) {
+    for (int i = 0; i < listValue.size(); ++i) {
+      Object elementValue = listValue.get(i);
+      String indexLabel = String.format("[%d]", i);
+      DebugValueMirror childMirror = new DebugValueMirror(elementValue);
+      builder.addChild(childMirror.asValueProto(indexLabel));
+    }
+    return builder;
+  }
+
+  private static DebugProtos.Value.Builder buildStructValue(
+      DebugProtos.Value.Builder builder, ClassObject structValue) {
+    ImmutableList<String> keys = Ordering.natural().immutableSortedCopy(structValue.getKeys());
+    for (String key : keys) {
+      Object fieldValue = structValue.getValue(key);
+      DebugValueMirror childMirror = new DebugValueMirror(fieldValue);
+      builder.addChild(childMirror.asValueProto(key));
+    }
+    return builder;
+  }
+
+  private static DebugProtos.Value.Builder buildDictValue(
+      DebugProtos.Value.Builder builder, Map<?, ?> dictValue) {
+    for (Map.Entry<?, ?> entry : dictValue.entrySet()) {
+      DebugProtos.Value entryKey =
+          new DebugValueMirror(entry.getKey()).asValueProto("key");
+      DebugProtos.Value entryValue =
+          new DebugValueMirror(entry.getValue()).asValueProto("value");
+
+      DebugProtos.Value.Builder entryBuilder = DebugProtos.Value.newBuilder()
+          .addChild(entryKey)
+          .addChild(entryValue);
+      builder.addChild(entryBuilder);
+    }
+    return builder;
   }
 }

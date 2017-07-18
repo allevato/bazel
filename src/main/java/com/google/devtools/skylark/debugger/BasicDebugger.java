@@ -214,7 +214,7 @@ class BasicDebugger {
           frame.getFunctionName().isEmpty() ? "<global scope>" : frame.getFunctionName());
 
       for (DebugProtos.Value value : frame.getBindingList()) {
-        System.out.printf("  * %s = %s\n", value.getLabel(), value.getDescription());
+        printValueProto(0, value);
       }
 
       System.out.println();
@@ -228,6 +228,23 @@ class BasicDebugger {
 
   private void handleThreadEndedEvent(DebugProtos.ThreadEndedEvent threadEnded) throws IOException {
     System.out.printf("\n[Thread %d has ended]\n", threadEnded.getThread().getId());
+  }
+
+  private void printValueProto(int depth, DebugProtos.Value value) {
+    for (int i = 0; i < depth; i++) {
+      System.out.print("  ");
+    }
+    if (depth == 0) {
+      System.out.printf("  *  ");
+    } else {
+      System.out.printf("   |- ");
+    }
+
+    System.out.printf("%s = %s\n", value.getLabel(), value.getDescription());
+
+    for (DebugProtos.Value child : value.getChildList()) {
+      printValueProto(depth + 1, child);
+    }
   }
 
   /** Provide a REPL for accessing debugger commands. */
