@@ -15,18 +15,31 @@
 package com.google.devtools.skylark.debugger;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Ordering;
 
 /** Commands supported by the basic debugger. */
 class BasicDebuggerCommands {
 
-  private static final Command listThreads = new Command("threads", "t") {
+  private static final String LIST_THREADS_DOC = "Lists the currently running threads";
+  private static final String SET_LINE_BREAKPOINT_DOC = "Sets a breakpoint on a line";
+  private static final String GO_DOC = "Continues execution of a paused thread";
+  private static final String PRINT_DOC = "Evaluates and prints a Skylark expression";
+  private static final String LIST_FRAMES_DOC = "Lists the stack frames of a thread";
+  private static final String SET_THREAD_DOC = "Switches the debugger to a different thread";
+  private static final String QUIT_DOC = "Exits the debugger";
+  private static final String HELP_DOC = "Displays debugger help";
+
+  private static final Command listThreads =
+      new Command("threads", "t", LIST_THREADS_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       return DebugRequest.listThreadsRequest();
     }
   };
 
-  private static final Command setLineBreakpoint = new Command("b") {
+  private static final Command setLineBreakpoint =
+      new Command("setbreakpoint", "b", SET_LINE_BREAKPOINT_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       String path = scanner.nextPath();
@@ -38,7 +51,8 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command go = new Command("go", "g") {
+  private static final Command go =
+      new Command("go", "g", GO_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       long threadId = scanner.optionalNextLong(state.getCurrentThread());
@@ -49,7 +63,8 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command print = new Command("print", "p") {
+  private static final Command print =
+      new Command("print", "p", PRINT_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       String expression = scanner.nextString();
@@ -62,7 +77,8 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command listFrames = new Command("frames", "f") {
+  private static final Command listFrames =
+      new Command("frames", "f", LIST_FRAMES_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       long threadId = scanner.optionalNextLong(state.getCurrentThread());
@@ -73,7 +89,8 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command setThread = new Command("setthread", "st") {
+  private static final Command setThread =
+      new Command("setthread", "st", SET_THREAD_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       // TODO(allevato): Disallow threads that don't exist.
@@ -83,7 +100,8 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command quit = new Command("quit", "q") {
+  private static final Command quit =
+      new Command("quit", "q", QUIT_DOC) {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       System.out.println("Shutting down.");
@@ -94,13 +112,71 @@ class BasicDebuggerCommands {
     }
   };
 
-  static final ImmutableList<Command> COMMAND_LIST = ImmutableList.of(
-      print,
+  private static final Command help =
+      new Command("help", "h", HELP_DOC) {
+    @Override
+    public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
+      String commandName = scanner.optionalNextString(null);
+      if (commandName == null) {
+        printAllCommandsHelp();
+      } else {
+        Command command = findCommand(commandName);
+        if (command != null) {
+          printCommandHelp(command);
+        } else {
+          System.out.printf("There is no command '%s'.\n\n", commandName);
+        }
+      }
+      return null;
+    }
+  };
+
+  /** Prints the summary help for all commands. */
+  private static void printAllCommandsHelp() {
+    Iterable<Command> sortedCommands = Ordering.from((Command lhs, Command rhs) -> {
+      return lhs.getShortName().compareTo(rhs.getShortName());
+    }).sortedCopy(COMMAND_LIST);
+
+    System.out.println("Available commands:\n");
+
+    for (Command command : sortedCommands) {
+      System.out.printf("  %-25s  %s\n", command.getShortName() + ", " + command.getLongName(),
+          command.getDocString());
+    }
+
+    System.out.println("\nType 'help [command]' for more help on a command.\n");
+  }
+
+  /** Prints detailed help about a specific command. */
+  private static void printCommandHelp(Command command) {
+    // TODO(allevato): Implement this.
+    System.out.println("Command-specific help isn't implemented yet.\n");
+  }
+
+  private static final ImmutableList<Command> COMMAND_LIST = ImmutableList.of(
       go,
+      help,
       listFrames,
       listThreads,
+      print,
       setLineBreakpoint,
       setThread,
       quit
   );
+
+  private static final ImmutableMap<String, Command> COMMAND_MAP;
+
+  static {
+    ImmutableMap.Builder<String, Command> builder = ImmutableMap.builder();
+    for (Command command : BasicDebuggerCommands.COMMAND_LIST) {
+      builder.put(command.getLongName(), command);
+      builder.put(command.getShortName(), command);
+    }
+    COMMAND_MAP = builder.build();
+  }
+
+  /** Returns the command with the given name, or null if there is none. */
+  static Command findCommand(String commandName) {
+    return COMMAND_MAP.get(commandName);
+  }
 }

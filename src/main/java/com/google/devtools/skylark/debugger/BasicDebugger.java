@@ -277,16 +277,6 @@ class BasicDebugger {
     }
   }
 
-  private void buildCommandMap() {
-    ImmutableMap.Builder<String, Command> builder = ImmutableMap.builder();
-    for (Command command : BasicDebuggerCommands.COMMAND_LIST) {
-      for (String name : command.getNames()) {
-        builder.put(name, command);
-      }
-    }
-    commandMap = builder.build();
-  }
-
   private DebugRequest executeCommand(String commandLine) {
     CommandLineScanner scanner = new CommandLineScanner(commandLine);
 
@@ -297,7 +287,7 @@ class BasicDebugger {
       return null;
     }
 
-    Command command = commandMap.get(commandName);
+    Command command = BasicDebuggerCommands.findCommand(commandName);
     if (command == null) {
       System.out.println("Unrecognized command: " + commandName);
       return null;
@@ -310,7 +300,6 @@ class BasicDebugger {
   private void commandLoop() {
     long sequenceNumber = 1;
 
-    buildCommandMap();
     printPrompt();
 
     String input;

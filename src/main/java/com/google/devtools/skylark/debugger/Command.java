@@ -19,16 +19,32 @@ import com.google.common.collect.ImmutableList;
 /** Interface for basic debugger commands. */
 abstract class Command {
 
-  private final ImmutableList<String> names;
+  private final String longName;
+
+  private final String shortName;
+
+  private final String docString;
 
   /** Creates a new command with the given names. */
-  Command(String... names) {
-    this.names = ImmutableList.copyOf(names);
+  Command(String longName, String shortName, String docString) {
+    this.longName = longName;
+    this.shortName = shortName;
+    this.docString = docString;
   }
 
-  /** Returns the list of names that can be used to invoke this command. */
-  ImmutableList<String> getNames() {
-    return names;
+  /** Returns the long name of the command. */
+  String getLongName() {
+    return longName;
+  }
+
+  /** Returns the short name of the command. */
+  String getShortName() {
+    return shortName;
+  }
+
+  /** Returns the docstring of the command. */
+  String getDocString() {
+    return docString;
   }
 
   /** Executes the command. */

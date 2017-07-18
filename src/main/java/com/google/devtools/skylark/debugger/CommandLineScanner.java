@@ -55,6 +55,15 @@ class CommandLineScanner {
     }
   }
 
+  /** Returns the next string in the command line string, or the default value if not present. */
+  String optionalNextString(String defaultValue) {
+    try {
+      return scanner.next();
+    } catch (NoSuchElementException e) {
+      return defaultValue;
+    }
+  }
+
   /** Returns the next integer in the command line string. */
   int nextInt() {
     try {
