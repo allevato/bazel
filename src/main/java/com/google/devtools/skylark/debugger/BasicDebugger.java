@@ -240,7 +240,7 @@ class BasicDebugger {
       System.out.printf("   |- ");
     }
 
-    System.out.printf("%s = %s\n", value.getLabel(), value.getDescription());
+    System.out.printf("%s = %s <%s>\n", value.getLabel(), value.getDescription(), value.getType());
 
     for (DebugProtos.Value child : value.getChildList()) {
       printValueProto(depth + 1, child);

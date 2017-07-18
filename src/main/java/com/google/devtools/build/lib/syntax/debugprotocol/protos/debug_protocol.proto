@@ -212,4 +212,12 @@ message Value {
   // Any child values associated with this value, such as its elements (for a
   // list or dictionary), its fields (for a struct), and so forth.
   repeated Value child = 3;
+
+  // A string describing the type of the value.
+  //
+  // This field may be omitted if the value does not correspond to a "real" type
+  // as far as the debugging view is concerned; for example, dictionaries will
+  // be rendered as sequences of key/value pairs ("entries") but the entries
+  // themselves do not have a meaningful type with respect to our rendering.
+  string type = 4;
 }

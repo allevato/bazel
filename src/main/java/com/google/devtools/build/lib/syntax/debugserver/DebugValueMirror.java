@@ -17,6 +17,7 @@ package com.google.devtools.build.lib.syntax.debugserver;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.devtools.build.lib.syntax.ClassObject;
+import com.google.devtools.build.lib.syntax.EvalUtils;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,8 @@ public class DebugValueMirror {
   /** Returns a {@code Value} proto builder containing the debugger representation of a value. */
   private static DebugProtos.Value.Builder makeValueBuilder(Object value) {
     Class<?> type = value.getClass();
-    DebugProtos.Value.Builder builder = DebugProtos.Value.newBuilder();
+    DebugProtos.Value.Builder builder = DebugProtos.Value.newBuilder()
+        .setType(EvalUtils.getDataTypeName(value));
 
     if (type == String.class) {
       String stringValue = (String) value;
