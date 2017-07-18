@@ -49,7 +49,7 @@ class BasicDebuggerCommands {
     }
   };
 
-  private static final Command eval = new Command("eval", "p") {
+  private static final Command print = new Command("print", "p") {
     @Override
     public DebugRequest doExecute(CommandLineScanner scanner, BasicDebuggerState state) {
       String expression = scanner.nextString();
@@ -84,7 +84,7 @@ class BasicDebuggerCommands {
   };
 
   static final ImmutableList<Command> COMMAND_LIST = ImmutableList.of(
-      eval,
+      print,
       go,
       listFrames,
       listThreads,
