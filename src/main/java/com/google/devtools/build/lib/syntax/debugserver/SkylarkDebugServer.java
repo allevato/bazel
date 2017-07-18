@@ -30,6 +30,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /** Manages the network socket and debugging state for threads running Skylark code. */
 public class SkylarkDebugServer {
@@ -72,10 +74,14 @@ public class SkylarkDebugServer {
   /** Breakpoints that are based on location. */
   private Set<DebugProtos.Location> locationBreakpoints;
 
+  /** Lock used to serialize event posting. */
+  private Lock postEventLock;
+
   public SkylarkDebugServer() {
     threadAdapters = new ConcurrentHashMap<>();
     pausedThreads = new ConcurrentHashMap<>();
     locationBreakpoints = new HashSet<>();
+    postEventLock = new ReentrantLock();
   }
 
   /**
@@ -208,13 +214,19 @@ public class SkylarkDebugServer {
    * @param event the event to post
    */
   private void postEvent(DebugEvent event) {
-    // TODO(allevato): Synchronize this.
-    if (eventStream != null) {
-      try {
-        event.asEventProto().writeDelimitedTo(eventStream);
-      } catch (IOException e) {
-        System.err.println("Failed to post event: " + e.getMessage());
+    try {
+      postEventLock.lock();
+
+      if (eventStream != null) {
+        try {
+          event.asEventProto().writeDelimitedTo(eventStream);
+          eventStream.flush();
+        } catch (IOException e) {
+          System.err.println("Failed to post event: " + e.getMessage());
+        }
       }
+    } finally {
+      postEventLock.unlock();;
     }
   }
 
@@ -288,8 +300,7 @@ public class SkylarkDebugServer {
     }
 
     if (response != null) {
-      response.asEventProto().writeDelimitedTo(eventStream);
-      eventStream.flush();
+      postEvent(response);
     }
 
     return keepRunning;
