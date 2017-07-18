@@ -24,11 +24,11 @@ class Breakpoint {
     this.breakpointBuilder = breakpointBuilder;
   }
 
-  public DebugProtos.Breakpoint asBreakpointProto() {
+  DebugProtos.Breakpoint asBreakpointProto() {
     return breakpointBuilder.build();
   }
 
-  public static Breakpoint locationBreakpoint(String path, int lineNumber) {
+  static Breakpoint locationBreakpoint(String path, int lineNumber) {
     return new Breakpoint(DebugProtos.Breakpoint.newBuilder()
         .setLocation(DebugProtos.Location.newBuilder()
             .setPath(path)

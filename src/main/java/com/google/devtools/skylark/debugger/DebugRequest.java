@@ -21,23 +21,23 @@ import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 /**
  * Represents a request sent from a debugger client to the debug server.
  */
-public class DebugRequest {
+class DebugRequest {
   private DebugProtos.DebugRequest.Builder requestProtoBuilder;
 
   private DebugRequest(DebugProtos.DebugRequest.Builder requestProtoBuilder) {
     this.requestProtoBuilder = requestProtoBuilder;
   }
 
-  public DebugProtos.DebugRequest asRequestProto(long sequenceNumber) {
+  DebugProtos.DebugRequest asRequestProto(long sequenceNumber) {
     return requestProtoBuilder.setSequenceNumber(sequenceNumber).build();
   }
 
-  public static DebugRequest listThreadsRequest() {
+  static DebugRequest listThreadsRequest() {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
         .setListThreads(DebugProtos.ListThreadsRequest.getDefaultInstance()));
   }
 
-  public static DebugRequest setBreakpointsRequest(Iterable<Breakpoint> breakpoints) {
+  static DebugRequest setBreakpointsRequest(Iterable<Breakpoint> breakpoints) {
     Iterable<DebugProtos.Breakpoint> breakpointProtos = Iterables.transform(
         breakpoints, (Breakpoint breakpoint) -> {
           return breakpoint.asBreakpointProto();
@@ -48,20 +48,20 @@ public class DebugRequest {
             .addAllBreakpoint(ImmutableList.copyOf(breakpointProtos))));
   }
 
-  public static DebugRequest continueExecutionRequest(long threadId) {
+  static DebugRequest continueExecutionRequest(long threadId) {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
         .setContinueExecution(DebugProtos.ContinueExecutionRequest.newBuilder()
             .setThreadId(threadId)));
   }
 
-  public static DebugRequest evaluateRequest(long threadId, String expression) {
+  static DebugRequest evaluateRequest(long threadId, String expression) {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
         .setEvaluate(DebugProtos.EvaluateRequest.newBuilder()
             .setThreadId(threadId)
             .setExpression(expression)));
   }
 
-  public static DebugRequest listFramesRequest(long threadId) {
+  static DebugRequest listFramesRequest(long threadId) {
     return new DebugRequest(DebugProtos.DebugRequest.newBuilder()
         .setListFrames(DebugProtos.ListFramesRequest.newBuilder()
             .setThreadId(threadId)));

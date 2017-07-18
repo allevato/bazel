@@ -14,12 +14,7 @@
 
 package com.google.devtools.skylark.debugger;
 
-import com.google.devtools.build.lib.events.Event;
-import com.google.devtools.build.lib.events.EventHandler;
-import com.google.devtools.build.lib.events.EventKind;
-import com.google.devtools.build.lib.syntax.BuildFileAST;
-import com.google.devtools.build.lib.syntax.Environment;
-import com.google.devtools.build.lib.syntax.Mutability;
+import com.google.common.collect.ImmutableMap;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import com.google.devtools.common.options.OptionsParser;
 import com.google.protobuf.TextFormat;
@@ -40,30 +35,14 @@ class BasicDebugger {
 
   private static final int CONNECTION_ATTEMPTS = 10;
 
-  private static final EventHandler PRINT_HANDLER =
-      new EventHandler() {
-        @Override
-        public void handle(Event event) {
-          if (event.getKind() == EventKind.ERROR) {
-            System.err.println(event.getMessage());
-          } else {
-            System.out.println(event.getMessage());
-          }
-        }
-      };
-
   private final BufferedReader reader =
       new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
 
-  private final Mutability mutability = Mutability.create("debugger");
+  private final BasicDebuggerOptions options;
 
-  private final Environment env =
-      Environment.builder(mutability)
-          .setGlobals(BasicDebuggerFunctions.createGlobals())
-          .setEventHandler(PRINT_HANDLER)
-          .build();
+  private final BasicDebuggerState debuggerState;
 
-  private BasicDebuggerOptions options;
+  private ImmutableMap<String, Command> commandMap;
 
   private Socket socket;
 
@@ -71,10 +50,11 @@ class BasicDebugger {
 
   private OutputStream requestStream;
 
-  private Semaphore responseLatch;
+  private final Semaphore responseLatch;
 
   private BasicDebugger(BasicDebuggerOptions options) {
     this.options = options;
+    this.debuggerState = new BasicDebuggerState();
     this.responseLatch = new Semaphore(0);
   }
 
@@ -202,7 +182,7 @@ class BasicDebugger {
 
   private void handleEvaluateResponse(DebugProtos.EvaluateResponse evaluate) throws IOException {
     System.out.println("\nResult:");
-    System.out.println(evaluate.getResult());
+    printValueProto(0, evaluate.getResult());
   }
 
   private void handleListFramesResponse(DebugProtos.ListFramesResponse listFrames)
@@ -247,19 +227,46 @@ class BasicDebugger {
     }
   }
 
+  private void buildCommandMap() {
+    ImmutableMap.Builder<String, Command> builder = ImmutableMap.builder();
+    for (Command command : BasicDebuggerCommands.COMMAND_LIST) {
+      for (String name : command.getNames()) {
+        builder.put(name, command);
+      }
+    }
+    commandMap = builder.build();
+  }
+
+  private DebugRequest executeCommand(String commandLine) {
+    CommandLineScanner scanner = new CommandLineScanner(commandLine);
+    String commandName = scanner.nextString();
+
+    Command command = commandMap.get(commandName);
+    if (command == null) {
+      System.out.println("Unrecognized command: " + commandName);
+      return null;
+    }
+
+    return command.execute(scanner, debuggerState);
+  }
+
   /** Provide a REPL for accessing debugger commands. */
-  public void commandLoop() {
+  private void commandLoop() {
     long sequenceNumber = 1;
+
+    buildCommandMap();
 
     String input;
     while ((input = prompt()) != null) {
       try {
-        DebugRequest request = (DebugRequest) BuildFileAST.eval(env, input);
-        DebugProtos.DebugRequest requestProto = request.asRequestProto(sequenceNumber++);
-        requestProto.writeDelimitedTo(requestStream);
-        requestStream.flush();
+        DebugRequest request = executeCommand(input);
+        if (request != null) {
+          DebugProtos.DebugRequest requestProto = request.asRequestProto(sequenceNumber++);
+          requestProto.writeDelimitedTo(requestStream);
+          requestStream.flush();
 
-        responseLatch.acquireUninterruptibly();
+          responseLatch.acquireUninterruptibly();
+        }
       } catch (Exception e) {
         e.printStackTrace();
       }
