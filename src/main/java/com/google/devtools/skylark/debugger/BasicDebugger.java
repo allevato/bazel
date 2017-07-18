@@ -146,6 +146,12 @@ class BasicDebugger {
         case THREADENDED:
           handleThreadEndedEvent(eventProto.getThreadEnded());
           break;
+        case THREADPAUSED:
+          handleThreadPausedEvent(eventProto.getThreadPaused());
+          break;
+        case THREADCONTINUED:
+          handleThreadContinuedEvent(eventProto.getThreadContinued());
+          break;
         default:
           System.out.println("Unknown event received from server:");
           TextFormat.print(eventProto, System.out);
@@ -208,6 +214,19 @@ class BasicDebugger {
 
   private void handleThreadEndedEvent(DebugProtos.ThreadEndedEvent threadEnded) throws IOException {
     System.out.printf("\n[Thread %d has ended]\n", threadEnded.getThread().getId());
+  }
+
+  private void handleThreadPausedEvent(DebugProtos.ThreadPausedEvent threadPaused)
+      throws IOException {
+    DebugProtos.Thread thread = threadPaused.getThread();
+    DebugProtos.Location location = thread.getLocation();
+    System.out.printf("\n[Thread %d has paused at %s:%s]\n",
+        thread.getId(), location.getPath(), location.getLineNumber());
+  }
+
+  private void handleThreadContinuedEvent(DebugProtos.ThreadContinuedEvent threadContinued)
+      throws IOException {
+    System.out.printf("\n[Thread %d has continued]\n", threadContinued.getThread().getId());
   }
 
   private void printValueProto(int depth, DebugProtos.Value value) {

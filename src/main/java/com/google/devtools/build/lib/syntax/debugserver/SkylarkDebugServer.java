@@ -152,6 +152,21 @@ public class SkylarkDebugServer {
     }
   }
 
+  /** Returns a {@code Thread} proto builder with information about the given thread. */
+  private DebugProtos.Thread.Builder buildThreadProto(long threadId) {
+    DebugProtos.Thread.Builder threadBuilder = DebugProtos.Thread.newBuilder()
+        .setId(threadId);
+
+    PausedThreadInfo pauseInfo = pausedThreads.get(threadId);
+    if (pauseInfo != null) {
+      threadBuilder
+          .setIsPaused(true)
+          .setLocation(getLocationProto(pauseInfo.astNode));
+    }
+
+    return threadBuilder;
+  }
+
   /** Returns a {@code Location} proto with the location of the given AST node. */
   private DebugProtos.Location getLocationProto(ASTNode node) {
     Location nodeLocation = node.getLocation();
@@ -174,12 +189,17 @@ public class SkylarkDebugServer {
     long threadId = Thread.currentThread().getId();
     PausedThreadInfo pauseInfo = new PausedThreadInfo(node);
     pausedThreads.put(threadId, pauseInfo);
+
+    postEvent(DebugEvent.threadPausedEvent(buildThreadProto(threadId).build()));
+
     synchronized(pauseInfo) {
       try {
         pauseInfo.wait();
       } catch (InterruptedException e) {
       }
     }
+
+    postEvent(DebugEvent.threadContinuedEvent(buildThreadProto(threadId).build()));
   }
 
   /**
@@ -284,17 +304,7 @@ public class SkylarkDebugServer {
     // around it instead of having separate concurrent hash maps.
     synchronized (threadAdapters) {
       for (long threadId : threadAdapters.keySet()) {
-        DebugProtos.Thread.Builder threadBuilder = DebugProtos.Thread.newBuilder()
-            .setId(threadId);
-
-        PausedThreadInfo pauseInfo = pausedThreads.get(threadId);
-        if (pauseInfo != null) {
-          threadBuilder
-              .setIsPaused(true)
-              .setLocation(getLocationProto(pauseInfo.astNode));
-        }
-
-        threadListBuilder.add(threadBuilder.build());
+        threadListBuilder.add(buildThreadProto(threadId).build());
       }
     }
 

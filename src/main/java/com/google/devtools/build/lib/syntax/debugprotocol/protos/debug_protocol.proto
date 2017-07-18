@@ -98,6 +98,8 @@ message DebugEvent {
 
     ThreadStartedEvent threadStarted = 1000;
     ThreadEndedEvent threadEnded = 1001;
+    ThreadPausedEvent threadPaused = 1002;
+    ThreadContinuedEvent threadContinued = 1003;
   }
 }
 
@@ -150,6 +152,22 @@ message ThreadStartedEvent {
 message ThreadEndedEvent {
 
   // The thread that ended.
+  Thread thread = 1;
+}
+
+// An event indicating that a thread was paused during execution.
+message ThreadPausedEvent {
+
+  // The thread that was paused.
+  Thread thread = 1;
+
+  // TODO(allevato): Add a reason.
+}
+
+// An event indicating that a thread has continued execution after being paused.
+message ThreadContinuedEvent {
+
+  // The thread that continued executing.
   Thread thread = 1;
 }
 

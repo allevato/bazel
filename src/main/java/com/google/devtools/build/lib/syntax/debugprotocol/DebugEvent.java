@@ -89,4 +89,18 @@ public class DebugEvent {
             .setThread(thread))
         .build());
   }
+
+  public static DebugEvent threadPausedEvent(DebugProtos.Thread thread) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setThreadPaused(DebugProtos.ThreadPausedEvent.newBuilder()
+            .setThread(thread))
+        .build());
+  }
+
+  public static DebugEvent threadContinuedEvent(DebugProtos.Thread thread) {
+    return new DebugEvent(DebugProtos.DebugEvent.newBuilder()
+        .setThreadContinued(DebugProtos.ThreadContinuedEvent.newBuilder()
+            .setThread(thread))
+        .build());
+  }
 }
