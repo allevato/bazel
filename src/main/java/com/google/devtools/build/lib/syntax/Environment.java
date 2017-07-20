@@ -27,6 +27,7 @@ import com.google.devtools.build.lib.syntax.Mutability.MutabilityException;
 import com.google.devtools.build.lib.syntax.Parser.Dialect;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import com.google.devtools.build.lib.syntax.debugserver.DebugAdapter;
+import com.google.devtools.build.lib.syntax.debugserver.DebugUtils;
 import com.google.devtools.build.lib.syntax.debugserver.DebugValueMirror;
 import com.google.devtools.build.lib.util.Fingerprint;
 import com.google.devtools.build.lib.util.Pair;
@@ -383,18 +384,31 @@ public final class Environment implements Freezable {
     }
 
     @Override
-    public Iterable<DebugProtos.Frame> listFrames() {
+    public Iterable<DebugProtos.Frame> listFrames(ASTNode ast) {
       ImmutableList.Builder<DebugProtos.Frame> frameListBuilder = ImmutableList.builder();
 
       Continuation currentContinuation = continuation;
+      Location currentLocation = ast.getLocation();
       Frame currentFrame = currentFrame();
 
       while (currentContinuation != null) {
-        DebugProtos.Frame frame = buildDebuggerFrame(currentFrame)
-            .setFunctionName(currentContinuation.function.getFullName())
-            .build();
-        frameListBuilder.add(frame);
+        DebugProtos.Frame.Builder frameBuilder = buildDebuggerFrame(currentFrame)
+            .setFunctionName(currentContinuation.function.getFullName());
 
+        if (currentLocation != null) {
+          DebugProtos.Location location = DebugUtils.getLocationProto(currentLocation);
+          if (location != null) {
+            frameBuilder.setLocation(location);
+          }
+        }
+
+        frameListBuilder.add(frameBuilder.build());
+
+        if (currentContinuation.caller != null) {
+          currentLocation = currentContinuation.caller.getLocation();
+        } else {
+          currentLocation = null;
+        }
         currentFrame = currentContinuation.lexicalFrame;
         currentContinuation = currentContinuation.continuation;
       }

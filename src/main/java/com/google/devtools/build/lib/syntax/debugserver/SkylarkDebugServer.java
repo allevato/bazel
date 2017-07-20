@@ -15,7 +15,6 @@
 package com.google.devtools.build.lib.syntax.debugserver;
 
 import com.google.common.collect.ImmutableList;
-import com.google.devtools.build.lib.events.Location;
 import com.google.devtools.build.lib.syntax.ASTNode;
 import com.google.devtools.build.lib.syntax.Environment;
 import com.google.devtools.build.lib.syntax.EvalException;
@@ -149,7 +148,7 @@ public class SkylarkDebugServer {
    * @param node the AST node representing the statement or expression currently being executed
    */
   public void pauseIfNecessary(ASTNode node) {
-    DebugProtos.Location location = getLocationProto(node);
+    DebugProtos.Location location = DebugUtils.getLocationProto(node);
     if (location == null) {
       return;
     }
@@ -167,27 +166,10 @@ public class SkylarkDebugServer {
     if (pauseInfo != null) {
       threadBuilder
           .setIsPaused(true)
-          .setLocation(getLocationProto(pauseInfo.astNode));
+          .setLocation(DebugUtils.getLocationProto(pauseInfo.astNode));
     }
 
     return threadBuilder;
-  }
-
-  /** Returns a {@code Location} proto with the location of the given AST node. */
-  private DebugProtos.Location getLocationProto(ASTNode node) {
-    Location nodeLocation = node.getLocation();
-    if (nodeLocation == null) {
-      return null;
-    }
-    Location.LineAndColumn lineAndColumn = nodeLocation.getStartLineAndColumn();
-    if (lineAndColumn == null) {
-      return null;
-    }
-    DebugProtos.Location location = DebugProtos.Location.newBuilder()
-        .setPath(nodeLocation.getPath().getBaseName())
-        .setLineNumber(lineAndColumn.getLine())
-        .build();
-    return location;
   }
 
   /** Pauses the current thread's execution. */
@@ -385,14 +367,17 @@ public class SkylarkDebugServer {
       DebugProtos.ListFramesRequest listFrames) throws IOException {
     long threadId = listFrames.getThreadId();
 
-    DebugAdapter adapter = threadAdapters.get(threadId);
-    if (adapter == null) {
-      // TODO(allevato): Return error response.
-      return DebugEvent.error(sequenceNumber,
-          String.format("Thread %d is not running", threadId));
-    }
+    synchronized (pausedThreads) {
+      PausedThreadInfo pausedThread = pausedThreads.get(threadId);
+      DebugAdapter adapter = threadAdapters.get(threadId);
+      if (adapter == null) {
+        // TODO(allevato): Return error response.
+        return DebugEvent.error(sequenceNumber,
+            String.format("Thread %d is not running", threadId));
+      }
 
-    Iterable<DebugProtos.Frame> frames = adapter.listFrames();
-    return DebugEvent.listFramesResponse(sequenceNumber, frames);
+      Iterable<DebugProtos.Frame> frames = adapter.listFrames(pausedThread.astNode);
+      return DebugEvent.listFramesResponse(sequenceNumber, frames);
+    }
   }
 }

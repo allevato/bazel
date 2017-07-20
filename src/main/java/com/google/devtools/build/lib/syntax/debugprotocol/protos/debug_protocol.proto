@@ -191,6 +191,9 @@ message Frame {
 
   // The variable bindings that are defined in this frame's scope.
   repeated Value binding = 2;
+
+  // The source location where the frame is currently paused.
+  Location location = 3;
 }
 
 // A location in Skylark source code.
