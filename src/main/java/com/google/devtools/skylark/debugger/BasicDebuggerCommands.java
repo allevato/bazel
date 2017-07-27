@@ -28,9 +28,10 @@ class BasicDebuggerCommands {
   private static final String PRINT_DOC = "Evaluates and prints a Skylark expression";
   private static final String LIST_FRAMES_DOC = "Lists the stack frames of a thread";
   private static final String SET_THREAD_DOC = "Switches the debugger to a different thread";
-  private static final String STEP_INTO_DOC = "Steps into the next function";
+  private static final String STEP_INTO_DOC =
+      "Steps into the next function in the current statement";
   private static final String STEP_OUT_DOC = "Steps out of the current function";
-  private static final String STEP_OVER_DOC = "Steps over the next statement";
+  private static final String NEXT_DOC = "Steps to the next statement in the same scope";
   private static final String QUIT_DOC = "Exits the debugger";
   private static final String HELP_DOC = "Displays debugger help";
 
@@ -78,8 +79,8 @@ class BasicDebuggerCommands {
   private static final Command go = new ContinueExecutionCommand(
       "go", "g", GO_DOC, DebugProtos.Stepping.NONE);
 
-  private static final Command stepOver = new ContinueExecutionCommand(
-      "stepover", "s", STEP_OVER_DOC, DebugProtos.Stepping.OVER);
+  private static final Command next = new ContinueExecutionCommand(
+      "next", "n", NEXT_DOC, DebugProtos.Stepping.OVER);
 
   private static final Command stepInto = new ContinueExecutionCommand(
       "stepin", "si", STEP_INTO_DOC, DebugProtos.Stepping.INTO);

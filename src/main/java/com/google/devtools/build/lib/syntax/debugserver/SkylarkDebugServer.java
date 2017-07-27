@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,8 +42,11 @@ public class SkylarkDebugServer {
     /** The AST node where execution is currently paused. */
     ASTNode astNode;
 
+    Semaphore semaphore;
+
     PausedThreadInfo(ASTNode astNode) {
       this.astNode = astNode;
+      this.semaphore = new Semaphore(0);
     }
   }
 
@@ -189,16 +193,11 @@ public class SkylarkDebugServer {
     PausedThreadInfo pauseInfo = new PausedThreadInfo(node);
     pausedThreads.put(threadId, pauseInfo);
 
-    postEvent(DebugEvent.threadPausedEvent(buildThreadProto(threadId).build()));
+    DebugProtos.Thread threadProto = buildThreadProto(threadId).build();
 
-    synchronized(pauseInfo) {
-      try {
-        pauseInfo.wait();
-      } catch (InterruptedException e) {
-      }
-    }
-
-    postEvent(DebugEvent.threadContinuedEvent(buildThreadProto(threadId).build()));
+    postEvent(DebugEvent.threadPausedEvent(threadProto));
+    pauseInfo.semaphore.acquireUninterruptibly();
+    postEvent(DebugEvent.threadContinuedEvent(threadProto));
   }
 
   /**
@@ -333,7 +332,6 @@ public class SkylarkDebugServer {
       }
     }
 
-    System.err.println(locationBreakpoints);
     return DebugEvent.setBreakpointsResponse(sequenceNumber);
   }
 
@@ -350,9 +348,7 @@ public class SkylarkDebugServer {
       } else {
         stepControls.put(threadId, stepControl);
       }
-      synchronized (pauseInfo) {
-        pauseInfo.notify();
-      }
+      pauseInfo.semaphore.release();
     }
     return DebugEvent.continueExecutionResponse(sequenceNumber);
   }
