@@ -26,4 +26,6 @@ public interface DebugAdapter {
 
   /** Returns an iterable of the current stack frames of the adapter's environment. */
   Iterable<DebugProtos.Frame> listFrames(ASTNode ast);
+
+  StepControl stepControl(DebugProtos.Stepping stepping);
 }

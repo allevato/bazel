@@ -29,7 +29,7 @@ public abstract class Statement extends ASTNode {
    * @throws InterruptedException may be thrown in a sub class.
    */
   final void exec(Environment env) throws EvalException, InterruptedException {
-    SkylarkDebugServer.getInstance().pauseIfNecessary(this);
+    SkylarkDebugServer.getInstance().pauseIfNecessary(env, this);
     try {
       doExec(env);
     } catch (EvalException ex) {

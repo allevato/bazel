@@ -70,6 +70,8 @@ public class SkylarkDebugServer {
   /** Tracks the objects used to block execution of threads. */
   private ConcurrentHashMap<Long, PausedThreadInfo> pausedThreads;
 
+  private ConcurrentHashMap<Long, StepControl> stepControls;
+
   /** Breakpoints that are based on location. */
   private Set<DebugProtos.Location> locationBreakpoints;
 
@@ -79,6 +81,7 @@ public class SkylarkDebugServer {
   public SkylarkDebugServer() {
     threadAdapters = new ConcurrentHashMap<>();
     pausedThreads = new ConcurrentHashMap<>();
+    stepControls = new ConcurrentHashMap<>();
     locationBreakpoints = new HashSet<>();
     postEventLock = new ReentrantLock();
   }
@@ -147,13 +150,21 @@ public class SkylarkDebugServer {
    *
    * @param node the AST node representing the statement or expression currently being executed
    */
-  public void pauseIfNecessary(ASTNode node) {
+  public void pauseIfNecessary(Environment env, ASTNode node) {
     DebugProtos.Location location = DebugUtils.getLocationProto(node);
     if (location == null) {
       return;
     }
     if (locationBreakpoints.contains(location)) {
       pauseCurrentThread(node);
+      return;
+    }
+
+    StepControl stepControl = stepControls.get(Thread.currentThread().getId());
+    if (stepControl != null) {
+      if (stepControl.shouldPause(env)) {
+        pauseCurrentThread(node);
+      }
     }
   }
 
@@ -332,6 +343,13 @@ public class SkylarkDebugServer {
     long threadId = continueExecution.getThreadId();
     PausedThreadInfo pauseInfo = pausedThreads.remove(threadId);
     if (pauseInfo != null) {
+      DebugAdapter adapter = threadAdapters.get(threadId);
+      StepControl stepControl = adapter.stepControl(continueExecution.getStepping());
+      if (stepControl == null) {
+        stepControls.remove(threadId);
+      } else {
+        stepControls.put(threadId, stepControl);
+      }
       synchronized (pauseInfo) {
         pauseInfo.notify();
       }

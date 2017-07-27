@@ -29,6 +29,7 @@ import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import com.google.devtools.build.lib.syntax.debugserver.DebugAdapter;
 import com.google.devtools.build.lib.syntax.debugserver.DebugUtils;
 import com.google.devtools.build.lib.syntax.debugserver.DebugValueMirror;
+import com.google.devtools.build.lib.syntax.debugserver.StepControl;
 import com.google.devtools.build.lib.util.Fingerprint;
 import com.google.devtools.build.lib.util.Pair;
 import com.google.devtools.build.lib.util.Preconditions;
@@ -418,6 +419,41 @@ public final class Environment implements Freezable {
       }
 
       return frameListBuilder.build();
+    }
+
+    @Override
+    public StepControl stepControl(DebugProtos.Stepping stepping) {
+      final Continuation pausedContinuation = continuation;
+
+      switch (stepping) {
+        case NONE:
+          return null;
+        case INTO:
+          return new StepControl() {
+            @Override
+            public boolean shouldPause(Environment env) {
+              return env.continuation.continuation == pausedContinuation ||
+                  env.continuation == pausedContinuation;
+            }
+          };
+        case OVER:
+          return new StepControl() {
+            @Override
+            public boolean shouldPause(Environment env) {
+              return env.continuation == pausedContinuation ||
+                  env.continuation == pausedContinuation.continuation;
+            }
+          };
+        case OUT:
+          return new StepControl() {
+            @Override
+            public boolean shouldPause(Environment env) {
+              return env.continuation == pausedContinuation.continuation;
+            }
+          };
+        default:
+          throw new IllegalArgumentException("Unsupported stepping: " + stepping);
+      }
     }
 
     /** Returns a {@code Frame} proto for the given environment frame. */

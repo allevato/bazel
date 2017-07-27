@@ -214,12 +214,12 @@ enum Stepping {
   // other reason (such as hitting another breakpoint).
   NONE = 0;
 
-  // Step over the next statement and any functions that it may call.
-  OVER = 1;
-
   // If the thread is paused on a statement that contains a function call,
   // step into that function. Otherwise, this is the same as OVER.
-  INTO = 2;
+  INTO = 1;
+
+  // Step over the next statement and any functions that it may call.
+  OVER = 2;
 
   // Continue execution until the current function has been exited and then
   // pause.
