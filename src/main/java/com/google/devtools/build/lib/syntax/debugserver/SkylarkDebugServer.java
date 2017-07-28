@@ -20,6 +20,7 @@ import com.google.devtools.build.lib.syntax.Environment;
 import com.google.devtools.build.lib.syntax.EvalException;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugEvent;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
+import com.google.protobuf.TextFormat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -32,9 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Logger;
 
 /** Manages the network socket and debugging state for threads running Skylark code. */
 public class SkylarkDebugServer {
+  private static final Logger LOG = Logger.getLogger(SkylarkDebugServer.class.getName());
 
   /** Information about a paused thread. */
   private class PausedThreadInfo {
@@ -106,7 +109,7 @@ public class SkylarkDebugServer {
         listenForIncomingConnections();
       } catch (IOException e) {
         // TODO(allevato): Do some more appropriate error handling here.
-        System.err.println("Debug server shut down due to exception: " + e.getMessage());
+        LOG.severe("Debug server shut down due to exception: " + e.getMessage());
         e.printStackTrace();
       }
     }).start();
@@ -133,7 +136,6 @@ public class SkylarkDebugServer {
   public <T> T runWithDebugging(Environment env, SkylarkDebugCallable<T> callable)
       throws EvalException, InterruptedException {
     long threadId = Thread.currentThread().getId();
-    // TODO(allevato): Associate a debug adapter with the environment and put that here.
     threadAdapters.put(threadId, env.getDebugAdapter());
     postEvent(DebugEvent.threadStartedEvent(
         DebugProtos.Thread.newBuilder().setId(threadId).build()));
@@ -211,14 +213,15 @@ public class SkylarkDebugServer {
 
       if (eventStream != null) {
         try {
+          LOG.info("Sending event: " + TextFormat.printToString(event.asEventProto()));
           event.asEventProto().writeDelimitedTo(eventStream);
           eventStream.flush();
         } catch (IOException e) {
-          System.err.println("Failed to post event: " + e.getMessage());
+          LOG.severe("Failed to post event: " + e.getMessage());
         }
       }
     } finally {
-      postEventLock.unlock();;
+      postEventLock.unlock();
     }
   }
 
@@ -248,7 +251,7 @@ public class SkylarkDebugServer {
           clientSocket.close();
         }
         catch (IOException e) {
-          System.err.println("Client thread died because of an I/O error: " + e.getMessage());
+          LOG.severe("Client thread died because of an I/O error: " + e.getMessage());
           e.printStackTrace();
         }
       });

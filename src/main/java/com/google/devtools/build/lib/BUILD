@@ -475,6 +475,7 @@ java_library(
         "//third_party:bytebuddy",
         "//third_party:guava",
         "//third_party:jsr305",
+        "//third_party/protobuf:protobuf_java",
     ],
 )
 
