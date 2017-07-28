@@ -132,6 +132,7 @@ java_library(
     ]),
     deps = [
         ":concurrent",
+        ":debugging",
         ":preconditions",
         "//third_party:guava",
         "//third_party:jsr305",
@@ -453,6 +454,16 @@ java_library(
 )
 
 java_library(
+    name = "debugging",
+    srcs = glob([
+        "debugging/**/*.java",
+    ]),
+    deps = [
+        "//third_party:guava",
+    ],
+)
+
+java_library(
     name = "syntax",
     srcs = glob([
         "syntax/**/*.java",
@@ -460,6 +471,7 @@ java_library(
     deps = [
         ":collect",
         ":concurrent",
+        ":debugging",
         ":events",
         ":skylarkinterface",
         ":util",
@@ -512,6 +524,7 @@ java_library(
         ":buildeventstream",
         ":collect",
         ":concurrent",
+        ":debugging",
         ":events",
         ":skylarkinterface",
         ":syntax",

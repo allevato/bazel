@@ -14,10 +14,15 @@
 package com.google.devtools.build.lib.syntax;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
 import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
+import com.google.devtools.build.lib.collect.nestedset.NestedSetView;
 import com.google.devtools.build.lib.collect.nestedset.Order;
 import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectable;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectables;
+import com.google.devtools.build.lib.debugging.SkylarkDebugView;
 import com.google.devtools.build.lib.events.Location;
 import com.google.devtools.build.lib.skylarkinterface.SkylarkModule;
 import com.google.devtools.build.lib.skylarkinterface.SkylarkModuleCategory;
@@ -84,7 +89,8 @@ import javax.annotation.Nullable;
           + "Please update legacy code and use only <code>depset()</code>."
 )
 @Immutable
-public final class SkylarkNestedSet implements SkylarkValue, SkylarkQueryable {
+public final class SkylarkNestedSet
+    implements SkylarkDebugReflectable, SkylarkValue, SkylarkQueryable {
 
   private final SkylarkType contentType;
   private final NestedSet<?> set;
@@ -336,5 +342,19 @@ public final class SkylarkNestedSet implements SkylarkValue, SkylarkQueryable {
   @Override
   public final boolean containsKey(Object key, Location loc) throws EvalException {
     return (set.toSet().contains(key));
+  }
+
+  @Override
+  public SkylarkDebugView getCustomDebugView() {
+    return new SkylarkDebugView() {
+      @Override
+      public Iterable<Child> getChildren(Object parent) {
+        SkylarkNestedSet nestedSet = (SkylarkNestedSet) parent;
+        return ImmutableList.<Child> builder()
+            .add(new Child("order", nestedSet.getOrder().getSkylarkName()))
+            .addAll(SkylarkDebugReflectables.getDebugViewChildren(nestedSet.set))
+            .build();
+      }
+    };
   }
 }

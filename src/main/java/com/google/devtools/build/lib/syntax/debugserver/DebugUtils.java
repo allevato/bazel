@@ -14,8 +14,12 @@
 
 package com.google.devtools.build.lib.syntax.debugserver;
 
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectables;
+import com.google.devtools.build.lib.debugging.SkylarkDebugView.Child;
 import com.google.devtools.build.lib.events.Location;
 import com.google.devtools.build.lib.syntax.ASTNode;
+import com.google.devtools.build.lib.syntax.EvalUtils;
+import com.google.devtools.build.lib.syntax.Printer;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 
 /** Utility functions for Skylark debugging. */
@@ -40,5 +44,19 @@ public class DebugUtils {
         .setPath(location.getPath().getPathString())
         .setLineNumber(lineAndColumn.getLine())
         .build();
+  }
+
+  /** Returns a {@code Value} proto builder containing the debugger representation of a value. */
+  public static DebugProtos.Value getValueProto(String label, Object value) {
+    DebugProtos.Value.Builder builder = DebugProtos.Value.newBuilder()
+        .setLabel(label)
+        .setType(EvalUtils.getDataTypeName(value))
+        .setDescription(Printer.repr(value));
+
+    for (Child child : SkylarkDebugReflectables.getDebugViewChildren(value)) {
+      builder.addChild(getValueProto(child.getLabel(), child.getValue()));
+    }
+
+    return builder.build();
   }
 }

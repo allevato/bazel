@@ -13,7 +13,11 @@
 // limitations under the License.
 package com.google.devtools.build.lib.collect.nestedset;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectable;
+import com.google.devtools.build.lib.debugging.SkylarkDebugView;
 import java.util.Set;
 
 /**
@@ -29,7 +33,7 @@ import java.util.Set;
  * NestedSet}. As there is a fixed limit on the size a transitive member can have to still be
  * eligible for inlining, this is enough to allow an efficient deduplicated presentation.
  */
-public class NestedSetView<E> {
+public class NestedSetView<E> implements SkylarkDebugReflectable {
   private final Object set;
 
   private NestedSetView(Object set) {
@@ -95,5 +99,19 @@ public class NestedSetView<E> {
       }
     }
     return children.build();
+  }
+
+  @Override
+  public SkylarkDebugView getCustomDebugView() {
+    return new SkylarkDebugView() {
+      @Override
+      public Iterable<Child> getChildren(Object parent) {
+        NestedSetView<E> setView = (NestedSetView<E>) parent;
+        return ImmutableList.of(
+            new Child("directs", ImmutableList.copyOf(setView.directs())),
+            new Child("transitives", ImmutableList.copyOf(setView.transitives()))
+        );
+      }
+    };
   }
 }

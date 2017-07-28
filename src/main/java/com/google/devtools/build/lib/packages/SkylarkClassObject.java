@@ -16,10 +16,13 @@ package com.google.devtools.build.lib.packages;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectable;
+import com.google.devtools.build.lib.debugging.SkylarkDebugView;
 import com.google.devtools.build.lib.events.Location;
 import com.google.devtools.build.lib.packages.NativeClassObjectConstructor.StructConstructor;
 import com.google.devtools.build.lib.skylarkinterface.SkylarkModule;
@@ -49,7 +52,8 @@ import javax.annotation.Nullable;
           + "See the global <a href=\"globals.html#struct\">struct</a> function "
           + "for more details."
 )
-public class SkylarkClassObject implements ClassObject, SkylarkValue, Concatable, Serializable {
+public class SkylarkClassObject
+    implements ClassObject, SkylarkValue, SkylarkDebugReflectable, Concatable, Serializable {
   private final ClassObjectConstructor constructor;
   private final ImmutableMap<String, Object> values;
   private final Location creationLoc;
@@ -273,5 +277,22 @@ public class SkylarkClassObject implements ClassObject, SkylarkValue, Concatable
   @Override
   public String toString() {
     return Printer.repr(this);
+  }
+
+  @Override
+  public SkylarkDebugView getCustomDebugView() {
+    return new SkylarkDebugView() {
+      @Override
+      public Iterable<Child> getChildren(Object parent) {
+        SkylarkClassObject classObject = (SkylarkClassObject) parent;
+        ImmutableList.Builder<Child> childrenBuilder = ImmutableList.builder();
+        ImmutableList<String> keys = Ordering.natural().immutableSortedCopy(classObject.getKeys());
+        for (String key : keys) {
+          Object fieldValue = classObject.getValue(key);
+          childrenBuilder.add(new Child(key, fieldValue));
+        }
+        return childrenBuilder.build();
+      }
+    };
   }
 }

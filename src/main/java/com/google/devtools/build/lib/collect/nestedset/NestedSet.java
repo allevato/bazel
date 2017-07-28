@@ -18,7 +18,11 @@ import static java.util.stream.Collectors.joining;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.devtools.build.lib.collect.CompactHashSet;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectable;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectables;
+import com.google.devtools.build.lib.debugging.SkylarkDebugView;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,7 +39,7 @@ import javax.annotation.Nullable;
  * @see NestedSetBuilder
  */
 @SuppressWarnings("unchecked")
-public final class NestedSet<E> implements Iterable<E> {
+public final class NestedSet<E> implements Iterable<E>, SkylarkDebugReflectable {
 
   private final Order order;
   private final Object children;
@@ -391,5 +395,17 @@ public final class NestedSet<E> implements Iterable<E> {
       }
     }
     return pos;
+  }
+
+  @Override
+  public SkylarkDebugView getCustomDebugView() {
+    return new SkylarkDebugView() {
+      @Override
+      public Iterable<Child> getChildren(Object parent) {
+        NestedSet<E> nestedSet = (NestedSet<E>) parent;
+        NestedSetView<E> setView = new NestedSetView<>(nestedSet);
+        return SkylarkDebugReflectables.getDebugViewChildren(setView);
+      }
+    };
   }
 }

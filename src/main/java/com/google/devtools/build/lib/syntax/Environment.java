@@ -18,6 +18,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.devtools.build.lib.cmdline.Label;
 import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+import com.google.devtools.build.lib.debugging.SkylarkDebugReflectables;
+import com.google.devtools.build.lib.debugging.SkylarkDebugView.Child;
 import com.google.devtools.build.lib.events.Event;
 import com.google.devtools.build.lib.events.EventHandler;
 import com.google.devtools.build.lib.events.EventKind;
@@ -28,7 +30,6 @@ import com.google.devtools.build.lib.syntax.Parser.Dialect;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import com.google.devtools.build.lib.syntax.debugserver.DebugAdapter;
 import com.google.devtools.build.lib.syntax.debugserver.DebugUtils;
-import com.google.devtools.build.lib.syntax.debugserver.DebugValueMirror;
 import com.google.devtools.build.lib.syntax.debugserver.StepControl;
 import com.google.devtools.build.lib.util.Fingerprint;
 import com.google.devtools.build.lib.util.Pair;
@@ -464,7 +465,7 @@ public final class Environment implements Freezable {
       for (Map.Entry<String, Object> entry : bindings.entrySet()) {
         String label = entry.getKey();
         Object value = entry.getValue();
-        DebugProtos.Value valueProto = new DebugValueMirror(value).asValueProto(label);
+        DebugProtos.Value valueProto = DebugUtils.getValueProto(label, value);
         frameBuilder.addBinding(valueProto);
       }
 

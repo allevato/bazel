@@ -383,7 +383,7 @@ public class SkylarkDebugServer {
     try {
       Object result = adapter.evaluate(expression);
       return DebugEvent.evaluateResponse(
-          sequenceNumber, new DebugValueMirror(result).asValueProto(null));
+          sequenceNumber, DebugUtils.getValueProto("", result));
     } catch (EvalException | InterruptedException e) {
       // TODO(allevato): Return error response.
       return DebugEvent.error(sequenceNumber, e.getMessage());
