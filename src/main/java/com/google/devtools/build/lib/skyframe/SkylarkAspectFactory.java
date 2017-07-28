@@ -35,6 +35,7 @@ import com.google.devtools.build.lib.syntax.EvalExceptionWithStackTrace;
 import com.google.devtools.build.lib.syntax.EvalUtils;
 import com.google.devtools.build.lib.syntax.Mutability;
 import com.google.devtools.build.lib.syntax.SkylarkType;
+import com.google.devtools.build.lib.syntax.debugserver.SkylarkDebugServer;
 import java.util.Map;
 
 /**
@@ -73,14 +74,13 @@ public class SkylarkAspectFactory implements ConfiguredAspectFactory {
       // so we do *not* setLoadingPhase().
       Object aspectSkylarkObject;
       try {
-        aspectSkylarkObject =
-            skylarkAspect
-                .getImplementation()
-                .call(
-                    ImmutableList.<Object>of(base, skylarkRuleContext),
-                    ImmutableMap.<String, Object>of(),
-                    /*ast=*/ null,
-                    env);
+        final SkylarkRuleContext finalRuleContext = skylarkRuleContext;
+        aspectSkylarkObject = SkylarkDebugServer.getInstance().runWithDebugging(
+            env, () -> skylarkAspect.getImplementation().call(
+                ImmutableList.<Object>of(base, finalRuleContext),
+                ImmutableMap.<String, Object>of(),
+                /*ast=*/ null,
+                env));
 
         if (ruleContext.hasErrors()) {
           return null;

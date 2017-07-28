@@ -84,13 +84,12 @@ public final class SkylarkRuleConfiguredTargetBuilder {
           .build(); // NB: loading phase functions are not available: this is analysis already,
                     // so we do *not* setLoadingPhase().
 
-      Object target = SkylarkDebugServer.getInstance().runWithDebugging(env, () -> {
-        return ruleImplementation.call(
-            ImmutableList.<Object>of(finalRuleContext),
-            ImmutableMap.<String, Object>of(),
-          /*ast=*/null,
-            env);
-      });
+      Object target = SkylarkDebugServer.getInstance().runWithDebugging(
+          env, () -> ruleImplementation.call(
+              ImmutableList.<Object>of(finalRuleContext),
+              ImmutableMap.<String, Object>of(),
+              /*ast=*/null,
+              env));
 
       if (ruleContext.hasErrors()) {
         return null;
