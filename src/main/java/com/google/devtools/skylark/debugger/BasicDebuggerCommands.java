@@ -183,12 +183,12 @@ class BasicDebuggerCommands {
       help,
       listFrames,
       listThreads,
+      next,
       print,
       setLineBreakpoint,
       setThread,
       stepInto,
       stepOut,
-      stepOver,
       quit
   );
 

@@ -17,7 +17,9 @@ package com.google.devtools.build.lib.syntax.debugserver;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.devtools.build.lib.syntax.ClassObject;
+import com.google.devtools.build.lib.syntax.Environment;
 import com.google.devtools.build.lib.syntax.EvalUtils;
+import com.google.devtools.build.lib.syntax.Printer;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
 import java.util.List;
 import java.util.Map;
@@ -43,16 +45,9 @@ public class DebugValueMirror {
   private static DebugProtos.Value.Builder makeValueBuilder(Object value) {
     Class<?> type = value.getClass();
     DebugProtos.Value.Builder builder = DebugProtos.Value.newBuilder()
-        .setType(EvalUtils.getDataTypeName(value));
+        .setType(EvalUtils.getDataTypeName(value))
+        .setDescription(Printer.repr(value));
 
-    if (type == String.class) {
-      String stringValue = (String) value;
-      return builder.setDescription(stringValue);
-    }
-    if (Number.class.isAssignableFrom(type)) {
-      Number numberValue = (Number) value;
-      return builder.setDescription(numberValue.toString());
-    }
     if (List.class.isAssignableFrom(type)) {
       List<?> listValue = (List<?>) value;
       return buildListValue(builder, listValue);
@@ -65,7 +60,7 @@ public class DebugValueMirror {
       ClassObject structValue = (ClassObject) value;
       return buildStructValue(builder, structValue);
     }
-    return builder.setDescription(value.toString());
+    return builder;
   }
 
   private static DebugProtos.Value.Builder buildListValue(
@@ -99,7 +94,7 @@ public class DebugValueMirror {
           new DebugValueMirror(entry.getValue()).asValueProto("value");
 
       DebugProtos.Value.Builder entryBuilder = DebugProtos.Value.newBuilder()
-          .setLabel("(entry)")
+          .setLabel("[" + Printer.repr(entry.getKey()) + "]")
           .addChild(entryKey)
           .addChild(entryValue);
       builder.addChild(entryBuilder);
