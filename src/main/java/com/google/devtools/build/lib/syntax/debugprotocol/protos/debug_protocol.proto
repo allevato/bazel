@@ -238,6 +238,10 @@ message Thread {
   // If the thread is paused, this field contains the location in Skylark code
   // of the next statement or expression that will be executed.
   Location location = 3;
+
+  // A descriptive name for the thread that can be displayed in the debugger's
+  // UI.
+  string name = 4;
 }
 
 // The debugger representation of a Skylark value.

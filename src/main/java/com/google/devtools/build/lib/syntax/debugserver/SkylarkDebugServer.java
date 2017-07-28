@@ -74,6 +74,8 @@ public class SkylarkDebugServer {
   /** Tracks the currently active threads. */
   private ConcurrentHashMap<Long, DebugAdapter> threadAdapters;
 
+  private ConcurrentHashMap<Long, String> threadNames;
+
   /** Tracks the objects used to block execution of threads. */
   private ConcurrentHashMap<Long, PausedThreadInfo> pausedThreads;
 
@@ -87,6 +89,7 @@ public class SkylarkDebugServer {
 
   public SkylarkDebugServer() {
     threadAdapters = new ConcurrentHashMap<>();
+    threadNames = new ConcurrentHashMap<>();
     pausedThreads = new ConcurrentHashMap<>();
     stepControls = new ConcurrentHashMap<>();
     locationBreakpoints = new HashSet<>();
@@ -128,17 +131,20 @@ public class SkylarkDebugServer {
    * Tracks the execution of the given callable object in the debug server.
    *
    * @param env the Skylark execution environment
+   * @param threadName the descriptive name of the thread
    * @param callable the callable object whose execution will be tracked
    * @param <T> the result type of the callable
    * @return the value returned by the callable
    * @throws EvalException if the callable throws an exception
    */
-  public <T> T runWithDebugging(Environment env, SkylarkDebugCallable<T> callable)
+  public <T> T runWithDebugging(
+      Environment env, String threadName, SkylarkDebugCallable<T> callable)
       throws EvalException, InterruptedException {
     long threadId = Thread.currentThread().getId();
     threadAdapters.put(threadId, env.getDebugAdapter());
+    threadNames.put(threadId, threadName);
     postEvent(DebugEvent.threadStartedEvent(
-        DebugProtos.Thread.newBuilder().setId(threadId).build()));
+        DebugProtos.Thread.newBuilder().setId(threadId).setName(threadName).build()));
 
     try {
       return callable.call();
@@ -147,6 +153,7 @@ public class SkylarkDebugServer {
       postEvent(DebugEvent.threadEndedEvent(
           DebugProtos.Thread.newBuilder().setId(threadId).build()));
       threadAdapters.remove(threadId);
+      threadNames.remove(threadId);
     }
   }
 
@@ -184,6 +191,10 @@ public class SkylarkDebugServer {
       threadBuilder
           .setIsPaused(true)
           .setLocation(DebugUtils.getLocationProto(pauseInfo.astNode));
+    }
+
+    if (threadNames.containsKey(threadId)) {
+      threadBuilder.setName(threadNames.get(threadId));
     }
 
     return threadBuilder;

@@ -74,9 +74,12 @@ public class SkylarkAspectFactory implements ConfiguredAspectFactory {
       // so we do *not* setLoadingPhase().
       Object aspectSkylarkObject;
       try {
+        String threadName = String.format("Aspect %s on %s",
+            skylarkAspect.getName(), ruleContext.getTarget().getLabel().getCanonicalForm());
+
         final SkylarkRuleContext finalRuleContext = skylarkRuleContext;
         aspectSkylarkObject = SkylarkDebugServer.getInstance().runWithDebugging(
-            env, () -> skylarkAspect.getImplementation().call(
+            env, threadName, () -> skylarkAspect.getImplementation().call(
                 ImmutableList.<Object>of(base, finalRuleContext),
                 ImmutableMap.<String, Object>of(),
                 /*ast=*/ null,
