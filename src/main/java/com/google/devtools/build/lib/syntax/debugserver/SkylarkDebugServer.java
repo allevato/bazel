@@ -15,6 +15,7 @@
 package com.google.devtools.build.lib.syntax.debugserver;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.syntax.ASTNode;
 import com.google.devtools.build.lib.syntax.Environment;
 import com.google.devtools.build.lib.syntax.EvalException;
@@ -353,10 +354,27 @@ public class SkylarkDebugServer {
   private DebugEvent handleContinueExecutionRequest(long sequenceNumber,
       DebugProtos.ContinueExecutionRequest continueExecution) throws IOException {
     long threadId = continueExecution.getThreadId();
+
+    if (threadId != 0) {
+      resumeThread(threadId, continueExecution.getStepping());
+    } else {
+      ImmutableSet<Long> threadIds = ImmutableSet.copyOf(pausedThreads.keySet());
+      for (long id : threadIds) {
+        // Continue-all doesn't support stepping.
+        resumeThread(id, DebugProtos.Stepping.NONE);
+      }
+      pausedThreads.clear();
+    }
+
+    return DebugEvent.continueExecutionResponse(sequenceNumber);
+  }
+
+  /** Resumes execution of the thread with the given ID. */
+  private void resumeThread(long threadId, DebugProtos.Stepping stepping) {
     PausedThreadInfo pauseInfo = pausedThreads.remove(threadId);
     if (pauseInfo != null) {
       DebugAdapter adapter = threadAdapters.get(threadId);
-      StepControl stepControl = adapter.stepControl(continueExecution.getStepping());
+      StepControl stepControl = adapter.stepControl(stepping);
       if (stepControl == null) {
         stepControls.remove(threadId);
       } else {
@@ -364,7 +382,6 @@ public class SkylarkDebugServer {
       }
       pauseInfo.semaphore.release();
     }
-    return DebugEvent.continueExecutionResponse(sequenceNumber);
   }
 
   /** Handles a {@code EvaluateRequest} and returns its response. */

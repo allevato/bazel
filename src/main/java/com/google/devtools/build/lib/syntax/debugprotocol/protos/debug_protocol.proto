@@ -54,6 +54,10 @@ message SetBreakpointsRequest {
 message ContinueExecutionRequest {
 
   // The identifier of the thread to continue.
+  //
+  // If this field is not set (i.e., zero), then execution of all threads will be continued. This
+  // is typically used when the debugger disconnects from the server. In this case, the stepping
+  // field is ignored.
   int64 thread_id = 1;
 
   // Describes the stepping behavior to use when continuing execution.
