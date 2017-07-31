@@ -72,6 +72,8 @@ public class SkylarkDebugServer {
   /** The output stream used to write events to the currently connected client. */
   private OutputStream eventStream;
 
+  private Semaphore clientConnectedSemaphore;
+
   /** Tracks the currently active threads. */
   private ConcurrentHashMap<Long, DebugAdapter> threadAdapters;
 
@@ -89,6 +91,7 @@ public class SkylarkDebugServer {
   private Lock postEventLock;
 
   public SkylarkDebugServer() {
+    clientConnectedSemaphore = new Semaphore(0);
     threadAdapters = new ConcurrentHashMap<>();
     threadNames = new ConcurrentHashMap<>();
     pausedThreads = new ConcurrentHashMap<>();
@@ -119,13 +122,18 @@ public class SkylarkDebugServer {
     }).start();
   }
 
-  /**
-   * Closes the debug server's socket.
-   *
-   * @throws IOException if an I/O error occurs while closing the socket
-   */
-  public void close() throws IOException {
-    serverSocket.close();
+  /** Closes the debug server's socket. */
+  public void close() {
+    try {
+      serverSocket.close();
+    } catch (IOException e) {
+      // Don't care if it errored out while closing.
+    }
+  }
+
+  /** Blocks until a debugger has attached to the server. */
+  public void waitForDebugger() {
+    clientConnectedSemaphore.acquireUninterruptibly();
   }
 
   /**
@@ -255,10 +263,14 @@ public class SkylarkDebugServer {
           requestStream = clientSocket.getInputStream();
           eventStream = clientSocket.getOutputStream();
 
+          clientConnectedSemaphore.release();
+
           boolean running = true;
           while (running) {
             running = handleClientRequest();
           }
+
+          clientConnectedSemaphore.acquireUninterruptibly();
 
           clientSocket.close();
         }

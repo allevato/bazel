@@ -190,6 +190,8 @@ class StartupOptions {
 
   std::vector<std::string> host_jvm_args;
 
+  bool debug_skylark;
+
   int debug_server_port;
 
   bool batch;

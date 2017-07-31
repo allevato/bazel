@@ -76,6 +76,7 @@ StartupOptions::StartupOptions(const string &product_name,
       deep_execroot(true),
       block_for_lock(true),
       host_jvm_debug(false),
+      debug_skylark(false),
       debug_server_port(7300),
       batch(false),
       batch_cpu_scheduling(false),
@@ -121,6 +122,7 @@ StartupOptions::StartupOptions(const string &product_name,
   RegisterNullaryStartupFlag("batch_cpu_scheduling");
   RegisterNullaryStartupFlag("block_for_lock");
   RegisterNullaryStartupFlag("client_debug");
+  RegisterNullaryStartupFlag("debug_skylark");
   RegisterNullaryStartupFlag("deep_execroot");
   RegisterNullaryStartupFlag("experimental_oom_more_eagerly");
   RegisterNullaryStartupFlag("fatal_event_bus_exceptions");
@@ -195,6 +197,9 @@ blaze_exit_code::ExitCode StartupOptions::ProcessArg(
                                      "--output_user_root")) != NULL) {
     output_user_root = MakeAbsolute(value);
     option_sources["output_user_root"] = rcfile;
+  } else if (GetNullaryOption(arg, "--debug_skylark")) {
+    debug_skylark = true;
+    option_sources["debug_skylark"] = rcfile;
   } else if (GetNullaryOption(arg, "--deep_execroot")) {
     deep_execroot = true;
     option_sources["deep_execroot"] = rcfile;

@@ -193,6 +193,19 @@ public class BlazeServerStartupOptions extends OptionsBase {
   public boolean batch;
 
   @Option(
+      name = "debug_skylark",
+      defaultValue = "false", // NOTE: purely decorative!  See class docstring.
+      category = "server startup",
+      documentationCategory = OptionDocumentationCategory.BAZEL_CLIENT_OPTIONS,
+      effectTags = {OptionEffectTag.LOSES_INCREMENTAL_STATE, OptionEffectTag.EXECUTION},
+      help =
+          "If set, Blaze will open the Skylark debug server while building. In batch mode, Blaze "
+              + "will wait for a debugger to attach to the server before executing commands; in "
+              + "server mode, Blaze will not wait but allow the debugger to attach at any time."
+  )
+  public boolean debugSkylark;
+
+  @Option(
       name = "debug_server_port",
       defaultValue = "7300", // NOTE: purely decorative!  See class docstring.
       category = "server startup",

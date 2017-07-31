@@ -728,18 +728,26 @@ public final class BlazeRuntime {
             + commandLineOptions.getStartupArgs());
 
     BlazeRuntime runtime;
+    BlazeServerStartupOptions startupOptions;
     InvocationPolicy policy;
     try {
       runtime = newRuntime(modules, commandLineOptions.getStartupArgs(), null);
-      policy = InvocationPolicyParser.parsePolicy(
-          runtime.getStartupOptionsProvider().getOptions(BlazeServerStartupOptions.class)
-              .invocationPolicy);
+      startupOptions = runtime.getStartupOptionsProvider().getOptions(BlazeServerStartupOptions.class);
+      policy = InvocationPolicyParser.parsePolicy(startupOptions.invocationPolicy);
     } catch (OptionsParsingException e) {
       OutErr.SYSTEM_OUT_ERR.printErrLn(e.getMessage());
       return ExitCode.COMMAND_LINE_ERROR.getNumericExitCode();
     } catch (AbruptExitException e) {
       OutErr.SYSTEM_OUT_ERR.printErrLn(e.getMessage());
       return e.getExitCode().getNumericExitCode();
+    }
+
+    try {
+      openSkylarkDebugServer(startupOptions);
+    } catch (IOException e) {
+      OutErr.SYSTEM_OUT_ERR.printErrLn(
+          "Could not start debug server; Skylark debugging will be unavailable.");
+      OutErr.SYSTEM_OUT_ERR.printErrLn(e.getMessage());
     }
 
     BlazeCommandDispatcher dispatcher = new BlazeCommandDispatcher(runtime);
@@ -754,6 +762,9 @@ public final class BlazeRuntime {
       // This is almost main(), so it's okay to just swallow it. We are exiting soon.
       return ExitCode.INTERRUPTED.getNumericExitCode();
     } finally {
+      if (startupOptions.debugSkylark) {
+        SkylarkDebugServer.getInstance().close();
+      }
       runtime.shutdown();
       dispatcher.shutdown();
     }
@@ -850,8 +861,15 @@ public final class BlazeRuntime {
   /** Starts the Skylark debug server on the port specified in the startup options. */
   private static void openSkylarkDebugServer(BlazeServerStartupOptions startupOptions)
       throws IOException {
-    SkylarkDebugServer debugServer = SkylarkDebugServer.getInstance();
-    debugServer.open(startupOptions.debugServerPort);
+    if (startupOptions.debugSkylark) {
+      SkylarkDebugServer debugServer = SkylarkDebugServer.getInstance();
+      debugServer.open(startupOptions.debugServerPort);
+      if (startupOptions.batch) {
+        OutErr.SYSTEM_OUT_ERR.printOutLn("Waiting for debugger to attach...");
+        OutErr.SYSTEM_OUT_ERR.getOutputStream().flush();
+        debugServer.waitForDebugger();
+      }
+    }
   }
 
   /**
