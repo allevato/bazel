@@ -861,7 +861,7 @@ public final class BlazeRuntime {
   /** Starts the Skylark debug server on the port specified in the startup options. */
   private static void openSkylarkDebugServer(BlazeServerStartupOptions startupOptions)
       throws IOException {
-    if (startupOptions.debugSkylark) {
+//    if (startupOptions.debugSkylark) {
       SkylarkDebugServer debugServer = SkylarkDebugServer.getInstance();
       debugServer.open(startupOptions.debugServerPort);
       if (startupOptions.batch) {
@@ -869,7 +869,7 @@ public final class BlazeRuntime {
         OutErr.SYSTEM_OUT_ERR.getOutputStream().flush();
         debugServer.waitForDebugger();
       }
-    }
+//    }
   }
 
   /**

@@ -21,6 +21,11 @@ import com.google.devtools.build.lib.syntax.ASTNode;
 import com.google.devtools.build.lib.syntax.EvalUtils;
 import com.google.devtools.build.lib.syntax.Printer;
 import com.google.devtools.build.lib.syntax.debugprotocol.DebugProtos;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 
 /** Utility functions for Skylark debugging. */
 public class DebugUtils {
@@ -40,10 +45,16 @@ public class DebugUtils {
     if (lineAndColumn == null) {
       return null;
     }
-    return DebugProtos.Location.newBuilder()
-        .setPath(location.getPath().getPathString())
-        .setLineNumber(lineAndColumn.getLine())
-        .build();
+    try {
+      // TODO(allevato): Should this be using Bazel's VFS? We'd need to make that pluggable.
+      Path path = FileSystems.getDefault().getPath(location.getPath().getPathString());
+      return DebugProtos.Location.newBuilder()
+          .setPath(path.toRealPath().toString())
+          .setLineNumber(lineAndColumn.getLine())
+          .build();
+    } catch (IOException e) {
+      return null;
+    }
   }
 
   /** Returns a {@code Value} proto builder containing the debugger representation of a value. */
